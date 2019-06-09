@@ -4,11 +4,9 @@
 
 using Grassmann
 
-export ∇, d
-
-function ∇(V)
-    sum([∂(k)*getbasis(V,1<<(k-1)) for k ∈ 1:ndims(V)])
+function (V::Signature)(d::Derivation{T,O}) where {T,O,S}
+    sum([(∂(k)^O)*getbasis(V,1<<(k-1)) for k ∈ 1:ndims(V)])
 end
 
-∂(ω::T) where T<:TensorAlgebra{V} where V = ω⋅∇(V)
-d(ω::T) where T<:TensorAlgebra{V} where V = ∇(V)∧ω
+∂(ω::T) where T<:TensorAlgebra{V} where V = ω⋅V(∇)
+d(ω::T) where T<:TensorAlgebra{V} where V = V(∇)∧ω

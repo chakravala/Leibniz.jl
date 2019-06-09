@@ -4,10 +4,13 @@ authors = ["Michael Reed <18372368+chakravala@users.noreply.github.com>"]
 version = "0.1.0"
 
 [deps]
+AbstractTensors = "a8e43f4a-99b7-5565-8bf1-0165161caaea"
+AbstractLattices = "398f06c4-4d28-53ec-89ca-5b2656b7603d"
 DirectSum = "22fd7b30-a8c0-5bf2-aabe-97783860d07c"
 Grassmann = "4df31cd9-4c27-5bea-88d0-e6a7146666d8"
 Reduce = "93e0c654-6965-5f22-aba9-9c1ae6b3c259"
 Requires = "ae029012-a4dd-5104-9daa-d747884805df"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [extras]

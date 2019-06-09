@@ -9,4 +9,4 @@
 [![Gitter](https://badges.gitter.im/Grassmann-jl/community.svg)](https://gitter.im/Grassmann-jl/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 [![Liberapay patrons](https://img.shields.io/liberapay/patrons/chakravala.svg)](https://liberapay.com/chakravala)
 
-Designed for cross-compatibility with [Grassmann.jl](https://github.com/chakravala/Grassmann.jl) and [Reduce.jl](https://github.com/chakravala/Reduce.jl) for multivariable differential operators and tensor field operations.
+Cross-compatibility of [Grassmann.jl](https://github.com/chakravala/Grassmann.jl) with [Reduce.jl](https://github.com/chakravala/Reduce.jl) for multivariable differential operators and tensor field operations.

@@ -4,9 +4,10 @@ module Leibniz
 #   Leibniz Copyright (C) 2019 Michael Reed
 
 using DirectSum, StaticArrays, Requires
+using LinearAlgebra, AbstractTensors, AbstractLattices
 import Base: *, ^, +, -, /, show
 
-export Differential, Partial, ∂
+export Differential, Partial, Derivation, d, ∂, ∇, Δ
 
 abstract type Operator end
 
@@ -38,17 +39,17 @@ indexint(D) = DirectSum.bit2int(DirectSum.indexbits(max(D...),D))
 
 *(::Differential{D1,1},::Differential{D2,1}) where {D1,D2} = ∂(D1,D2)
 
-struct OperatorExpr <: Operator
-    expr
+struct OperatorExpr{T} <: Operator
+    expr::T
 end
 
 show(io::IO,d::OperatorExpr) = print(io,'(',d.expr,')')
 
 add(d,n) = OperatorExpr(Expr(:call,:+,d,n))
 
-function plus(d::OperatorExpr,n)
+function plus(d::OperatorExpr{T},n) where T
     iszero(n) && (return d)
-    if typeof(d.expr) == Expr
+    if T == Expr
         if d.expr.head == :call
             if d.expr.args[1] == :+
                 return OperatorExpr(Expr(:call,:+,push!(copy(d.expr.args[2:end]),n)...))
@@ -61,7 +62,7 @@ function plus(d::OperatorExpr,n)
             throw(error("Operator expression not implemented"))
         end
     else
-        OperatorExpr(d+n)
+        OperatorExpr(d.expr+n)
     end
 end
 
@@ -75,13 +76,90 @@ end
 +(d::OperatorExpr,n::O) where O<:Operator = plus(d,n)
 -(d::O) where O<:Operator = OperatorExpr(Expr(:call,:-,d))
 
+#add(d,n) = OperatorExpr(Expr(:call,:+,d,n))
+
+function times(d::OperatorExpr{T},n) where T
+    iszero(n) && (return 0)
+    isone(n) && (return d)
+    if T == Expr
+        if d.expr.head == :call
+            if d.expr.args[1] ∈ (:+,:-)
+                return OperatorExpr(Expr(:call,:+,(d.expr.args[2:end] .* Ref(n))...))
+            elseif d.expr.args[1] == :*
+                (d.expr.args[2]*n)*d.expr.args[3] + d.expr.args[2]*(d.expr.args[3]*n)
+            elseif d.expr.args[1] == :/
+                (d.expr.args[2]*n)/d.expr.args[3] - (d.expr.args[2]*(d.expr.args[3]*n))/(d.expr.args[3]^2)
+            else
+                return OperatorExpr(Expr(:call,:*,d.expr,n))
+            end
+        else
+            throw(error("Operator expression not implemented"))
+        end
+    else
+        OperatorExpr(d.expr*n)
+    end
+end
+
+*(d::OperatorExpr,n::Differential) = times(d,n)
+*(d::OperatorExpr,n::Partial) = times(d,n)
+*(n::Differential,d::OperatorExpr) = times(d,n)
+*(n::Partial,d::OperatorExpr) = times(d,n)
+
 ## generic
 
 Base.signbit(::O) where O<:Operator = false
 Base.abs(d::O) where O<:Operator = d
 
+struct Derivation{T,O}
+    v::UniformScaling{T}
+end
+
+Derivation{T}(v::UniformScaling{T}) where T = Derivation{T,1}(v)
+Derivation(v::UniformScaling{T}) where T = Derivation{T}(v)
+
+show(io::IO,v::Derivation{Bool,O}) where O = print(io,(v.v.λ ? "" : "-"),"∂ₖ",O==1 ? "" : DirectSum.sups[O],"vₖ")
+show(io::IO,v::Derivation{T,O}) where {T,O} = print(io,v.v.λ,"∂ₖ",O==1 ? "" : DirectSum.sups[O],"vₖ")
+
+-(v::Derivation{Bool,O}) where {T,O} = Derivation{Bool,O}(LinearAlgebra.UniformScaling{Bool}(!v.v.λ))
+-(v::Derivation{T,O}) where {T,O} = Derivation{T,O}(LinearAlgebra.UniformScaling{T}(-v.v.λ))
+
+function ^(v::Derivation{T,O},n::S) where {T,O,S<:Integer}
+    x = T<:Bool ? (isodd(n) ? v.v.λ : true ) : v.v.λ^n
+    t = typeof(x)
+    Derivation{t,O*n}(LinearAlgebra.UniformScaling{t}(x))
+end
+
+for op ∈ (:+,:-,:*)
+    @eval begin
+        $op(a::Derivation{A,O},b::Derivation{B,O}) where {A,B,O} = Derivation{promote_type(A,B),O}($op(a.v,b.v))
+        $op(a::Derivation{A,O},b::B) where {A,B<:Number,O} = Derivation{promote_type(A,B),O}($op(a.v,b))
+        $op(a::A,b::Derivation{B,O}) where {A<:Number,B,O} = Derivation{promote_type(A,B),O}($op(a,b.v))
+    end
+end
+
+unitype(::UniformScaling{T}) where T = T
+
+/(a::Derivation{A,O},b::Derivation{B,O}) where {A,B,O} = (x=a.v/b.v; Derivation{unitype(x),O}(x))
+/(a::Derivation{A,O},b::B) where {A,B<:Number,O} = (x=a.v/b; Derivation{unitype(x),O}(x))
+#/(a::A,b::Derivation{B,O}) where {A<:Number,B,O} = (x=a/b.v; Derivation{typeof(x),O}(x))
+
+import AbstractLattices: ∧, ∨
+import LinearAlgebra: dot, cross
+
+for op ∈ (:+,:-,:*,:/,:∧,:∨,:dot,:cross)
+    @eval begin
+        $op(a::Derivation,b::B) where B<:TensorAlgebra{V} where V = $op(V(a),b)
+        $op(a::A,b::Derivation) where A<:TensorAlgebra{V} where V = $op(a,V(b))
+    end
+end
+
+∇ = Derivation(LinearAlgebra.I)
+Δ = ∇^2
+
+include("grassmann.jl")
+
 function __init__()
-    @require Grassmann="4df31cd9-4c27-5bea-88d0-e6a7146666d8" include("grassmann.jl")
+    #@require Grassmann="4df31cd9-4c27-5bea-88d0-e6a7146666d8" include("grassmann.jl")
     @require Reduce="93e0c654-6965-5f22-aba9-9c1ae6b3c259" include("symbolic.jl")
     #@require SymPy="24249f21-da20-56a4-8eb1-6a02cf4ae2e6" nothing
 end

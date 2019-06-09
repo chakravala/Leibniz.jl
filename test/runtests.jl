@@ -1,5 +1,8 @@
 using Leibniz,Reduce,Grassmann
 using Test
 
+V = V"3"
+
 # write your own tests here
-@test value(∇(V"3")⋅∇(V"3")).expr == value((∇(V"3")^2)(0)(1)).expr
+@test ∇^2 == Δ
+#@test value(V(∇)⋅V(∇)).expr == value((V(∇)^2)(0)(1)).expr
