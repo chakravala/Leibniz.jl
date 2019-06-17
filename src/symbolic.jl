@@ -4,13 +4,13 @@
 
 using Reduce
 
-Reduce.RExpr(::Differential{D,0}) where D = RExpr("1")
-Reduce.RExpr(::Differential{D,1}) where D = RExpr("d_$D")
-Reduce.RExpr(::Differential{D,O}) where {D,O} = RExpr("d_$D^$O")
+Reduce.RExpr(::Monomial{V,G,D,0} where {V,G}) where D = RExpr("1")
+Reduce.RExpr(::Monomial{V,G,D,1} where {V,G}) where D = RExpr("d_$D")
+Reduce.RExpr(::Monomial{V,G,D,O} where {V,G}) where {D,O} = RExpr("d_$D^$O")
 
 for RE ∈ (RExpr,Expr,Symbol)
     @eval begin
-        *(d::Differential{D,1},r::$RE) where D = Algebra.df(r,RExpr("v$D"))
-        *(d::Differential{D,O},r::$RE) where {D,O} = Algebra.df(r,RExpr("v$D"),RExpr("$O"))
+        *(d::Monomial{V,1,D,1} where V,r::$RE) where D = Algebra.df(r,RExpr("v$D"))
+        *(d::Monomial{V,O,D,O} where V,r::$RE) where {D,O} = Algebra.df(r,RExpr("v$D"),RExpr("$O"))
     end
 end

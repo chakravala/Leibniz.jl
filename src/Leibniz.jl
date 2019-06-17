@@ -3,77 +3,72 @@ module Leibniz
 #   This file is part of Leibniz.jl. It is licensed under the GPL license
 #   Leibniz Copyright (C) 2019 Michael Reed
 
-using DirectSum, StaticArrays, Requires
+using DirectSum, StaticArrays #, Requires
 using LinearAlgebra, AbstractTensors, AbstractLattices
-import Base: *, ^, +, -, /, show
-import DirectSum: value
+import Base: *, ^, +, -, /, show, zero
+import DirectSum: value, V0, dualtype, pre
 
-export Differential, Partial, Derivation, d, ∂, ∇, Δ, @operator
+export Differential, Monomial, Derivation, d, ∂, ∇, Δ, @operator
 
-abstract type Operator end
+abstract type Operator{V} end #<: TensorAlgebra{V} end
 
-struct Differential{D,O,T} <: Operator
-    v::T
-end
-
-Differential{D}() where D = Differential{D,1}()
-Differential{D,O}() where {D,O} = Differential{D,O}(true)
-Differential{D,O}(v::T) where {D,O,T} = Differential{D,O,T}(v)
-
-value(d::Differential{D,O,T} where {D,O}) where T = d.v
-
-show(io::IO,d::Differential{D,0,Bool} where D) = print(io,value(d) ? 1 : -1)
-show(io::IO,d::Differential{D,0} where D) = print(io,value(d))
-show(io::IO,d::Differential{D,1,Bool}) where D = print(io,value(d) ? "" : "-",'∂',DirectSum.subs[D])
-show(io::IO,d::Differential{D,1}) where D = print(io,value(d),'∂',DirectSum.subs[D])
-show(io::IO,d::Differential{D,O,Bool}) where {D,O} = print(io,value(d) ? "" : "-",'∂',DirectSum.subs[D],DirectSum.sups[O])
-show(io::IO,d::Differential{D,O}) where {D,O} = print(io,value(d),'∂',DirectSum.subs[D],DirectSum.sups[O])
+abstract type Polynomial{V,G} <: Operator{V} end
 
 +(d::O) where O<:Operator = d
 +(r,d::O) where O<:Operator = d+r
-+(a::Differential{D,O},b::Differential{D,O}) where {D,O} = (c=a.v+b.v; iszero(c) ? 0 : Differential{D,O}(c))
--(a::Differential{D,O},b::Differential{D,O}) where {D,O} = (c=a.v-b.v; iszero(c) ? 0 : Differential{D,O}(c))
--(d::Differential{D,O}) where {D,O} = Differential{D,O}(-d.v)
-*(d::Differential{D,0} where D,r) = r
-*(r,d::Differential) = d*r
-*(a::Differential{D,1},b::Differential{D,1}) where D = (c=a.v*b.v; iszero(c) ? 0 : Differential{D,2}(c))
-*(a::Differential{D,A},b::Differential{D,B}) where {D,A,B} = (c=a.v*b.v; iszero(c) ? 0 : Differential{D,A+B}(c))
-*(a::Differential{D,O,Bool},b::I) where {D,O,I<:Number} = isone(b) ? a : Differential{D,O,I}(value(a) ? b : -b)
-*(a::Differential{D,O,T},b::I) where {D,O,T,I<:Number} = isone(b) ? a : Differential{D,O}(value(a)*b)
-^(d::Differential{D,O},o::T) where {D,O,T<:Integer} = iszero(o) ? 1 : Differential{D,O*o}(value(d)^o)
-^(d::Differential{D,O,Bool},o::T) where {D,O,T<:Integer} = iszero(o) ? 1 : Differential{D,O*o}(value(d) ? true : iseven(o))
 
-struct Partial{D,T} <: Operator
+struct Monomial{V,G,D,O,T} <: Polynomial{V,G}
     v::T
 end
 
-Partial{D}() where D = Partial{D}(true)
-Partial{D}(v::T) where {D,T} = Partial{D,T}(v)
+Monomial{V,G,D}() where {V,G,D} = Monomial{V,G,D}(true)
+Monomial{V,G,D}(v::T) where {V,G,D,T} = Monomial{V,G,D,1,T}(v)
+Monomial{V,G,D,O}() where {V,G,D,O,T} = Monomial{V,G,D,O}(true)
+Monomial{V,G,D,O}(v::T) where {V,G,D,O,T} = Monomial{V,G,D,O,T}(v)
 
-value(d::Partial{D,T} where D) where T = d.v
+zero(::Monomial) = Monomial{V0,0,0,0}()
 
-show(io::IO,d::Partial{D,Bool}) where D = print(io,value(d) ? "" : "-",'∂',[DirectSum.subs[k] for k ∈ DirectSum.indices(UInt(D))]...)
-show(io::IO,d::Partial{D}) where D = print(io,value(d),'∂',[DirectSum.subs[k] for k ∈ DirectSum.indices(UInt(D))]...)
-show(io::IO,d::Partial{0,Bool}) = print(io,value(d) ? 1 : -1)
-show(io::IO,d::Partial{0}) = print(io,value(d))
-show(io::IO,d::Partial{UInt(0),Bool}) = print(io,value(d) ? 1 : -1)
-show(io::IO,d::Partial{UInt(0)}) = print(io,value(d))
+value(d::Monomial{V,G,D,T} where {V,G,D}) where T = d.v
+
+sups(O) = O ≠ 1 ? DirectSum.sups[O] : ""
+
+show(io::IO,d::Monomial{V,G,D,O,Bool} where G) where {V,D,O} = print(io,value(d) ? "" : "-",pre[dualtype(V)>0 ? 4 : 3],[DirectSum.subs[k] for k ∈ DirectSum.shift_indices(V,UInt(D))]...,sups(O))
+show(io::IO,d::Monomial{V,G,D,O} where G) where {V,D,O} = print(io,value(d),pre[dualtype(V)>0 ? 4 : 3],[DirectSum.subs[k] for k ∈ DirectSum.shift_indices(V,UInt(D))]...,sups(O))
+show(io::IO,d::Monomial{V,G,D,0,Bool} where {V,G,D}) = print(io,value(d) ? 1 : -1)
+show(io::IO,d::Monomial{V,G,0,O,Bool} where {V,G,O}) = print(io,value(d) ? 1 : -1)
+show(io::IO,d::Monomial{V,0,D,O,Bool} where {V,D,O}) = print(io,value(d) ? 1 : -1)
+show(io::IO,d::Monomial{V,G,D,0} where {V,G,D}) = print(io,value(d))
+show(io::IO,d::Monomial{V,G,0} where {V,G}) = print(io,value(d))
+show(io::IO,d::Monomial{V,0} where V) = print(io,value(d))
+show(io::IO,d::Monomial{V,G,D,UInt(0),Bool} where {V,G,D}) = print(io,value(d) ? 1 : -1)
+show(io::IO,d::Monomial{V,G,UInt(0),O,Bool} where {V,G,O}) = print(io,value(d) ? 1 : -1)
+show(io::IO,d::Monomial{V,UInt(0),D,O,Bool} where {V,D,O}) = print(io,value(d) ? 1 : -1)
+show(io::IO,d::Monomial{V,G,D,UInt(0)} where {V,G,D}) = print(io,value(d))
+show(io::IO,d::Monomial{V,G,UInt(0)} where {V,G}) = print(io,value(d))
+show(io::IO,d::Monomial{V,UInt(0)} where V) = print(io,value(d))
 
 indexint(D) = DirectSum.bit2int(DirectSum.indexbits(max(D...),D))
 
-∂(D::T) where T<:Integer = Differential{D}()
-∂(D::T...) where T<:Integer = Partial{indexint(D)}()
+∂(D::T...) where T<:Integer = Monomial{V0,length(D),indexint(D)}()
+∂(V::S,D::T...) where {S<:VectorSpace,T<:Integer} = Monomial{V,length(D),indexint(D)}()
 
-*(r,d::Partial) = d*r
-*(a::Differential{D1,1},b::Differential{D2,1}) where {D1,D2} = (c=a.v*b.v; iszero(c) ? 0 : Partial{indexint((D1,D2))}(c))
-*(a::Partial{D,Bool},b::I) where {D,I<:Number} = isone(b) ? a : Partial{D,I}(value(a) ? b : -b)
-*(a::Partial{D,T},b::I) where {D,T,I<:Number} = isone(b) ? a : Partial{D}(value(a)*b)
-+(a::Partial{D},b::Partial{D}) where D = (c=a.v+b.v; iszero(c) ? 0 : Partial{indexint((D1,D2))}(c))
--(a::Partial{D},b::Partial{D}) where D = (c=a.v-b.v; iszero(c) ? 0 : Partial{indexint((D1,D2))}(c))
-#-(d::Partial{D,Bool}) where {D,O} = Partial{D,Bool}(!value(d))
--(d::Partial{D}) where D = Partial{D}(-value(d))
+*(r,d::Monomial) = d*r
+*(d::Monomial{V,G,D,0} where {V,G,D},r) = r
+*(d::Monomial{V,G,0,O} where {V,G,O},r) = r
+*(d::Monomial{V,0,D,O} where {V,D,O},r) = r
+*(a::Monomial{V,1,D,O1},b::Monomial{V,1,D,O2}) where {V,D,O1,O2} = (c=a.v*b.v; iszero(c) ? 0 : Monomial{V,2,D,O1+O2}(c))
+*(a::Monomial{V,1,D,1},b::Monomial{V,1,D,1}) where {V,D,O1,O2} = (c=a.v*b.v; iszero(c) ? 0 : Monomial{V,2,D,2}(c))
+*(a::Monomial{V,1,D1,1},b::Monomial{V,1,D2,1}) where {V,D1,D2} = (c=a.v*b.v; iszero(c) ? 0 : Monomial{V,2,D1|D2}(c))
+*(a::Monomial{V,G,D,O,Bool},b::I) where {V,G,D,O,I<:Number} = isone(b) ? a : Monomial{V,G,D,O,I}(value(a) ? b : -b)
+*(a::Monomial{V,G,D,O,T},b::I) where {V,G,D,O,T,I<:Number} = isone(b) ? a : Monomial{V,G,D,O}(value(a)*b)
++(a::Monomial{V,G,D,O},b::Monomial{V,G,D,O}) where {V,G,D,O} = (c=a.v+b.v; iszero(c) ? 0 : Monomial{V,G,D,O}(c))
+-(a::Monomial{V,G,D,O},b::Monomial{V,G,D,O}) where {V,G,D,O} = (c=a.v-b.v; iszero(c) ? 0 : Monomial{V,G,D,O}(c))
+#-(d::Monomial{V,G,D,O,Bool}) where {V,G,D,O} = Monomial{V,G,D,O,Bool}(!value(d))
+-(d::Monomial{V,G,D,O}) where {V,G,D,O} = Monomial{V,G,D,O}(-value(d))
+^(d::Monomial{V,G,D,O},o::T) where {V,G,D,O,T<:Integer} = iszero(o) ? 1 : Monomial{V,G+(O*o),D,O*o}(value(d)^o)
+^(d::Monomial{V,G,D,O,Bool},o::T) where {V,G,D,O,T<:Integer} = iszero(o) ? 1 : Monomial{V,G+(O*o),D,O*o}(value(d) ? true : iseven(o))
 
-struct OperatorExpr{T} <: Operator
+struct OperatorExpr{T} <: Operator{T}
     expr::T
 end
 
@@ -104,12 +99,8 @@ function plus(d::OperatorExpr{T},n) where T
     end
 end
 
-+(d::Partial,n::T) where T<:Number = iszero(n) ? d : add(d,n)
-+(d::Differential,n::T) where T<:Number = iszero(n) ? d : add(d,n)
-+(d::Partial,n::Partial) = add(d,n)
-+(d::Differential,n::Partial) = add(d,n)
-+(d::Partial,n::Differential) = add(d,n)
-+(d::Differential,n::Differential) = add(d,n)
++(d::Monomial,n::T) where T<:Number = iszero(n) ? d : add(d,n)
++(d::Monomial,n::Monomial) = add(d,n)
 +(d::OperatorExpr,n) = plus(d,n)
 +(d::OperatorExpr,n::O) where O<:Operator = plus(d,n)
 -(d::OperatorExpr) = OperatorExpr(Expr(:call,:-,d))
@@ -138,16 +129,12 @@ function times(d::OperatorExpr{T},n) where T
     end
 end
 
-*(d::OperatorExpr,n::Differential) = times(d,n)
-*(d::OperatorExpr,n::Partial) = times(d,n)
+*(d::OperatorExpr,n::Monomial) = times(d,n)
 *(d::OperatorExpr,n::OperatorExpr) = OperatorExpr(Expr(:call,:*,d,n))
 
-*(a::Differential,b::Differential{D,O}) where {D,O} = Differential{D,O}(a*OperatorExpr(b.v))
-*(a::Differential{D,O},b::OperatorExpr) where {D,O} = Differential{D,O}(value(a)*b.expr)
-*(a::Partial,b::Partial{D}) where D = Partial{D}(a*OperatorExpr(b.v))
-*(a::Partial{D},b::OperatorExpr) where {D,O} = Partial{D}(value(a)*b.expr)
-*(a::Differential,b::Partial{D}) where D = Partial{D}(a*OperatorExpr(b.v))
-*(a::Partial,b::Differential{D}) where D = Differential{D}(a*OperatorExpr(b.v))
+*(a::Monomial{V,1},b::Monomial{V,1,D,O}) where {V,D,O} = Monomial{V,1,D,O}(a*OperatorExpr(b.v))
+*(a::Monomial,b::Monomial{V,G,D,O}) where {V,G,D,O} = Monomial{V,G,D,O}(a*OperatorExpr(b.v))
+*(a::Monomial{V,G,D,O},b::OperatorExpr) where {V,G,D,O} = Monomial{V,G,D,O}(value(a)*b.expr)
 
 ^(d::OperatorExpr,n::T) where T<:Integer = iszero(n) ? 1 : isone(n) ? d : OperatorExpr(Expr(:call,:^,d,n))
 
@@ -202,10 +189,12 @@ end
 ∇ = Derivation(LinearAlgebra.I)
 Δ = ∇^2
 
-function __init__()
+function d end
+
+#=function __init__()
     @require Grassmann="4df31cd9-4c27-5bea-88d0-e6a7146666d8" include("grassmann.jl")
     @require Reduce="93e0c654-6965-5f22-aba9-9c1ae6b3c259" include("symbolic.jl")
     #@require SymPy="24249f21-da20-56a4-8eb1-6a02cf4ae2e6" nothing
-end
+end=#
 
 end # module

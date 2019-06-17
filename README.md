@@ -38,4 +38,6 @@ julia> ∇, Δ
 
 ```
 
-The package generates the tensor algebra of multivariable symmetric Leibniz differentials and interfaces `using Reduce, Grassmann` to provide the `∇,Δ` vector field operators, enabling  mixed-symmetry tensors with arbitrary multivariate `Grassmann` manifolds.
+Generates the tensor algebra of multivariable symmetric Leibniz differentials and interfaces `using Reduce, Grassmann` to provide the `∇,Δ` vector field operators, enabling  mixed-symmetry tensors with arbitrary multivariate `Grassmann` manifolds.
+
+This is an initial undocumented pre-release registration for testing with other packages.

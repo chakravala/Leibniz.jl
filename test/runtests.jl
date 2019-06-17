@@ -1,7 +1,5 @@
-using Leibniz,Reduce,Grassmann
+using Leibniz # Grassmann
 using Test
-
-V = V"3"
 
 # write your own tests here
 @test ∇^2 == Δ
