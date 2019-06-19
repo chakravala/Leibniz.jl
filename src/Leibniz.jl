@@ -186,8 +186,8 @@ for op ∈ (:+,:-,:*,:/,:∧,:∨,:dot,:cross)
     end
 end
 
-∇ = Derivation(LinearAlgebra.I)
-Δ = ∇^2
+const ∇ = Derivation(LinearAlgebra.I)
+const Δ = ∇^2
 
 function d end
 
