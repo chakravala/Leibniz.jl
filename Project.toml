@@ -1,7 +1,7 @@
 name = "Leibniz"
 uuid = "edad4870-8a01-11e9-2d75-8f02e448fc59"
 authors = ["Michael Reed"]
-version = "0.0.1"
+version = "0.0.2"
 
 [deps]
 AbstractTensors = "a8e43f4a-99b7-5565-8bf1-0165161caaea"
@@ -12,9 +12,11 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
 julia = "1"
+DirectSum = "0.3"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+Grassmann = "4df31cd9-4c27-5bea-88d0-e6a7146666d8"
 
 [targets]
-test = ["Test"]
+test = ["Test","Grassmann"]

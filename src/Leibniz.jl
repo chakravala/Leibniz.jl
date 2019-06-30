@@ -6,7 +6,7 @@ module Leibniz
 using DirectSum, StaticArrays #, Requires
 using LinearAlgebra, AbstractTensors, AbstractLattices
 import Base: *, ^, +, -, /, show, zero
-import DirectSum: value, V0, dualtype, pre
+import DirectSum: value, V0, mixedmode, pre
 
 export Differential, Monomial, Derivation, d, ∂, ∇, Δ, @operator
 
@@ -32,8 +32,8 @@ value(d::Monomial{V,G,D,T} where {V,G,D}) where T = d.v
 
 sups(O) = O ≠ 1 ? DirectSum.sups[O] : ""
 
-show(io::IO,d::Monomial{V,G,D,O,Bool} where G) where {V,D,O} = print(io,value(d) ? "" : "-",pre[dualtype(V)>0 ? 4 : 3],[DirectSum.subs[k] for k ∈ DirectSum.shift_indices(V,UInt(D))]...,sups(O))
-show(io::IO,d::Monomial{V,G,D,O} where G) where {V,D,O} = print(io,value(d),pre[dualtype(V)>0 ? 4 : 3],[DirectSum.subs[k] for k ∈ DirectSum.shift_indices(V,UInt(D))]...,sups(O))
+show(io::IO,d::Monomial{V,G,D,O,Bool} where G) where {V,D,O} = print(io,value(d) ? "" : "-",pre[mixedmode(V)>0 ? 4 : 3],[DirectSum.subs[k] for k ∈ DirectSum.shift_indices(V,UInt(D))]...,sups(O))
+show(io::IO,d::Monomial{V,G,D,O} where G) where {V,D,O} = print(io,value(d),pre[mixedmode(V)>0 ? 4 : 3],[DirectSum.subs[k] for k ∈ DirectSum.shift_indices(V,UInt(D))]...,sups(O))
 show(io::IO,d::Monomial{V,G,D,0,Bool} where {V,G,D}) = print(io,value(d) ? 1 : -1)
 show(io::IO,d::Monomial{V,G,0,O,Bool} where {V,G,O}) = print(io,value(d) ? 1 : -1)
 show(io::IO,d::Monomial{V,0,D,O,Bool} where {V,D,O}) = print(io,value(d) ? 1 : -1)
@@ -50,7 +50,7 @@ show(io::IO,d::Monomial{V,UInt(0)} where V) = print(io,value(d))
 indexint(D) = DirectSum.bit2int(DirectSum.indexbits(max(D...),D))
 
 ∂(D::T...) where T<:Integer = Monomial{V0,length(D),indexint(D)}()
-∂(V::S,D::T...) where {S<:VectorSpace,T<:Integer} = Monomial{V,length(D),indexint(D)}()
+∂(V::S,D::T...) where {S<:VectorBundle,T<:Integer} = Monomial{V,length(D),indexint(D)}()
 
 *(r,d::Monomial) = d*r
 *(d::Monomial{V,G,D,0} where {V,G,D},r) = r
