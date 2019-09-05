@@ -6,7 +6,7 @@ module Leibniz
 using DirectSum, StaticArrays #, Requires
 using LinearAlgebra, AbstractTensors, AbstractLattices
 import Base: *, ^, +, -, /, show, zero
-import DirectSum: value, V0, mixedmode, pre
+import DirectSum: value, V0, mixedmode, pre, diffmode
 
 export Differential, Monomial, Derivation, d, ∂, ∇, Δ, @operator
 
@@ -56,17 +56,40 @@ indexint(D) = DirectSum.bit2int(DirectSum.indexbits(max(D...),D))
 *(d::Monomial{V,G,D,0} where {V,G,D},r) = r
 *(d::Monomial{V,G,0,O} where {V,G,O},r) = r
 *(d::Monomial{V,0,D,O} where {V,D,O},r) = r
-*(a::Monomial{V,1,D,O1},b::Monomial{V,1,D,O2}) where {V,D,O1,O2} = (c=a.v*b.v; iszero(c) ? 0 : Monomial{V,2,D,O1+O2}(c))
-*(a::Monomial{V,1,D,1},b::Monomial{V,1,D,1}) where {V,D,O1,O2} = (c=a.v*b.v; iszero(c) ? 0 : Monomial{V,2,D,2}(c))
-*(a::Monomial{V,1,D1,1},b::Monomial{V,1,D2,1}) where {V,D1,D2} = (c=a.v*b.v; iszero(c) ? 0 : Monomial{V,2,D1|D2}(c))
+function *(a::Monomial{V,1,D,O1},b::Monomial{V,1,D,O2}) where {V,D,O1,O2}
+    O = O1+O2
+    O > diffmode(V) && (return 0)
+    c = a.v*b.v
+    iszero(c) ? 0 : Monomial{V,2,D,O1+O2}(c)
+end
+function *(a::Monomial{V,1,D,1},b::Monomial{V,1,D,1}) where {V,D,O1,O2}
+    2 > diffmode(V) && (return 0)
+    c = a.v*b.v
+    iszero(c) ? 0 : Monomial{V,2,D,2}(c)
+end
+function *(a::Monomial{V,1,D1,1},b::Monomial{V,1,D2,1}) where {V,D1,D2}
+    2 > diffmode(V) && (return 0)
+    c = a.v*b.v
+    iszero(c) ? 0 : Monomial{V,2,D1|D2}(c)
+end
 *(a::Monomial{V,G,D,O,Bool},b::I) where {V,G,D,O,I<:Number} = isone(b) ? a : Monomial{V,G,D,O,I}(value(a) ? b : -b)
 *(a::Monomial{V,G,D,O,T},b::I) where {V,G,D,O,T,I<:Number} = isone(b) ? a : Monomial{V,G,D,O}(value(a)*b)
 +(a::Monomial{V,G,D,O},b::Monomial{V,G,D,O}) where {V,G,D,O} = (c=a.v+b.v; iszero(c) ? 0 : Monomial{V,G,D,O}(c))
 -(a::Monomial{V,G,D,O},b::Monomial{V,G,D,O}) where {V,G,D,O} = (c=a.v-b.v; iszero(c) ? 0 : Monomial{V,G,D,O}(c))
 #-(d::Monomial{V,G,D,O,Bool}) where {V,G,D,O} = Monomial{V,G,D,O,Bool}(!value(d))
 -(d::Monomial{V,G,D,O}) where {V,G,D,O} = Monomial{V,G,D,O}(-value(d))
-^(d::Monomial{V,G,D,O},o::T) where {V,G,D,O,T<:Integer} = iszero(o) ? 1 : Monomial{V,G+(O*o),D,O*o}(value(d)^o)
-^(d::Monomial{V,G,D,O,Bool},o::T) where {V,G,D,O,T<:Integer} = iszero(o) ? 1 : Monomial{V,G+(O*o),D,O*o}(value(d) ? true : iseven(o))
+function ^(d::Monomial{V,G,D,O},o::T) where {V,G,D,O,T<:Integer}
+    Oo = O*o
+    GOo = G+Oo
+    GOo > diffmode(V) && (return 0)
+    iszero(o) ? 1 : Monomial{V,GOo,D,Oo}(value(d)^o)
+end
+function ^(d::Monomial{V,G,D,O,Bool},o::T) where {V,G,D,O,T<:Integer}
+    Oo = O*o
+    GOo = G+Oo
+    GOo > diffmode(V) && (return 0)
+    iszero(o) ? 1 : Monomial{V,GOo,D,Oo}(value(d) ? true : iseven(o))
+end
 
 struct OperatorExpr{T} <: Operator{T}
     expr::T
@@ -131,6 +154,7 @@ end
 
 *(d::OperatorExpr,n::Monomial) = times(d,n)
 *(d::OperatorExpr,n::OperatorExpr) = OperatorExpr(Expr(:call,:*,d,n))
+*(n::T,d::OperatorExpr) where T<:Number = OperatorExpr(DirectSum.∏(n,d.expr))
 
 *(a::Monomial{V,1},b::Monomial{V,1,D,O}) where {V,D,O} = Monomial{V,1,D,O}(a*OperatorExpr(b.v))
 *(a::Monomial,b::Monomial{V,G,D,O}) where {V,G,D,O} = Monomial{V,G,D,O}(a*OperatorExpr(b.v))
@@ -192,7 +216,6 @@ const Δ = ∇^2
 function d end
 
 #=function __init__()
-    @require Grassmann="4df31cd9-4c27-5bea-88d0-e6a7146666d8" include("grassmann.jl")
     @require Reduce="93e0c654-6965-5f22-aba9-9c1ae6b3c259" include("symbolic.jl")
     #@require SymPy="24249f21-da20-56a4-8eb1-6a02cf4ae2e6" nothing
 end=#
