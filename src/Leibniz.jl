@@ -4,8 +4,8 @@ module Leibniz
 #   Leibniz Copyright (C) 2019 Michael Reed
 
 using DirectSum, StaticArrays #, Requires
-using LinearAlgebra, AbstractTensors, AbstractLattices
-import Base: *, ^, +, -, /, show, zero
+using LinearAlgebra, AbstractTensors
+import Base: *, ^, +, -, /, \, show, zero
 import DirectSum: value, V0, mixedmode, pre, diffmode
 
 export Differential, Monomial, Derivation, d, ∂, ∇, Δ, @operator
@@ -49,8 +49,8 @@ show(io::IO,d::Monomial{V,UInt(0)} where V) = print(io,value(d))
 
 indexint(D) = DirectSum.bit2int(DirectSum.indexbits(max(D...),D))
 
-∂(D::T...) where T<:Integer = Monomial{V0,length(D),indexint(D)}()
-∂(V::S,D::T...) where {S<:VectorBundle,T<:Integer} = Monomial{V,length(D),indexint(D)}()
+#∂(D::T...) where T<:Integer = Monomial{V0,length(D),indexint(D)}()
+#∂(V::S,D::T...) where {S<:Manifold,T<:Integer} = Monomial{V,length(D),indexint(D)}()
 
 *(r,d::Monomial) = d*r
 *(d::Monomial{V,G,D,0} where {V,G,D},r) = r
@@ -199,11 +199,13 @@ unitype(::UniformScaling{T}) where T = T
 /(a::Derivation{A,O},b::Derivation{B,O}) where {A,B,O} = (x=a.v/b.v; Derivation{unitype(x),O}(x))
 /(a::Derivation{A,O},b::B) where {A,B<:Number,O} = (x=a.v/b; Derivation{unitype(x),O}(x))
 #/(a::A,b::Derivation{B,O}) where {A<:Number,B,O} = (x=a/b.v; Derivation{typeof(x),O}(x))
+\(a::Derivation{A,O},b::Derivation{B,O}) where {A,B,O} = (x=a.v\b.v; Derivation{unitype(x),O}(x))
+\(a::A,b::Derivation{B,O}) where {A<:Number,B,O} = (x=a\b.v; Derivation{unitype(x),O}(x))
 
-import AbstractLattices: ∧, ∨
+import AbstractTensors: ∧, ∨
 import LinearAlgebra: dot, cross
 
-for op ∈ (:+,:-,:*,:/,:∧,:∨,:dot,:cross)
+for op ∈ (:+,:-,:*,:/,:\,:∧,:∨,:dot,:cross)
     @eval begin
         $op(a::Derivation,b::B) where B<:TensorAlgebra{V} where V = $op(V(a),b)
         $op(a::A,b::Derivation) where A<:TensorAlgebra{V} where V = $op(a,V(b))

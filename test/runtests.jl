@@ -1,8 +1,8 @@
-using Leibniz, Grassmann
+using Leibniz #, Grassmann
 using Test
 
-const V = V"3"
+#const V = SubManifold(ℝ^3)
 
 # write your own tests here
 @test ∇^2 == Δ
-@test value(V(∇)⋅V(∇)) == value((V(∇)^2)(0)(1))
+#@test V(∇)⋅V(∇) == V(∇)^2
