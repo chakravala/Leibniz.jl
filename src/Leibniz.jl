@@ -207,8 +207,8 @@ import LinearAlgebra: dot, cross
 
 for op ∈ (:+,:-,:*,:/,:\,:∧,:∨,:dot,:cross)
     @eval begin
-        $op(a::Derivation,b::B) where B<:TensorAlgebra{V} where V = $op(V(a),b)
-        $op(a::A,b::Derivation) where A<:TensorAlgebra{V} where V = $op(a,V(b))
+        $op(a::Derivation,b::B) where B<:TensorAlgebra = $op(Manifold(b)(a),b)
+        $op(a::A,b::Derivation) where A<:TensorAlgebra = $op(a,Manifold(a)(b))
     end
 end
 
