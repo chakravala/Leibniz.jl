@@ -1,6 +1,6 @@
 # Leibniz.jl
 
-*Operator algebras for multivariate differentiable Julia expressions*
+*Bit entanglements for tensor algebra derivations and hypergraphs*
 
 [![Build Status](https://travis-ci.org/chakravala/Leibniz.jl.svg?branch=master)](https://travis-ci.org/chakravala/Leibniz.jl)
 [![Build status](https://ci.appveyor.com/api/projects/status/xb03dyfvhni6vrj5?svg=true)](https://ci.appveyor.com/project/chakravala/leibniz-jl)
@@ -9,11 +9,26 @@
 [![Gitter](https://badges.gitter.im/Grassmann-jl/community.svg)](https://gitter.im/Grassmann-jl/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 [![Liberapay patrons](https://img.shields.io/liberapay/patrons/chakravala.svg)](https://liberapay.com/chakravala)
 
-Compatibility of [Grassmann.jl](https://github.com/chakravala/Grassmann.jl) for multivariable differential operators and tensor field operations.
+Although intended for compatibility use with the [Grassmann.jl](https://github.com/chakravala/Grassmann.jl) package for multivariable differential operators and tensor field operations, `Leibniz` can be used independently.
+
+### Extended dual index printing with full alphanumeric characters #62'
+
+To help provide a commonly shared and readable indexing to the user, some print methods are provided:
+```julia
+julia> Leibniz.printindices(stdout,Leibniz.indices(UInt(2^62-1)),false,"v")
+v₁₂₃₄₅₆₇₈₉₀abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ
+
+julia> Leibniz.printindices(stdout,Leibniz.indices(UInt(2^62-1)),false,"w")
+w¹²³⁴⁵⁶⁷⁸⁹⁰ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz
+```
+An application of this is in `Grassmann` and `DirectSum`, where dual indexing is used.
+
+# Derivation
+
+Generates the tensor algebra of multivariable symmetric Leibniz differentials and interfaces `using Reduce, Grassmann` to provide the `∇,Δ` vector field operators, enabling  mixed-symmetry tensors with arbitrary multivariate `Grassmann` manifolds.
 
 ```Julia
 julia> using Leibniz, Grassmann
-Reduce (Free CSL version, revision 4980), 06-May-19 ...
 
 julia> V = tangent(ℝ^3,4,3)
 ⟨+++⟩
@@ -36,7 +51,5 @@ true
 julia> ∇, Δ
 (∂ₖvₖ, ∂ₖ²v)
 ```
-
-Generates the tensor algebra of multivariable symmetric Leibniz differentials and interfaces `using Reduce, Grassmann` to provide the `∇,Δ` vector field operators, enabling  mixed-symmetry tensors with arbitrary multivariate `Grassmann` manifolds.
 
 This is an initial undocumented pre-release registration for testing with other packages.

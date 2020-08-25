@@ -1,171 +1,90 @@
 module Leibniz
 
-#   This file is part of Leibniz.jl. It is licensed under the GPL license
+#   This file is part of Leibniz.jl. It is licensed under the AGPL license
 #   Leibniz Copyright (C) 2019 Michael Reed
 
-using DirectSum, StaticArrays #, Requires
 using LinearAlgebra, AbstractTensors
-import Base: *, ^, +, -, /, \, show, zero
-import DirectSum: value, V0, mixedmode, pre, diffmode
+export Manifold, Differential, Derivation, d, ∂, ∇, Δ
+import Base: getindex, convert, @pure, +, *, ∪, ∩, ⊆, ⊇, ==, show, zero
+import LinearAlgebra: det, rank
 
-export Differential, Monomial, Derivation, d, ∂, ∇, Δ, @operator
+## Manifold{N}
 
-abstract type Operator{V} end #<: TensorAlgebra{V} end
+import AbstractTensors: TensorAlgebra, Manifold, TensorGraded, scalar, isscalar, involute
+import AbstractTensors: vector, isvector, bivector, isbivector, volume, isvolume, ⋆, mdims
+import AbstractTensors: value, valuetype, interop, interform, even, odd, isnull, norm
+import AbstractTensors: TupleVector, Values, Variables, FixedVector, SVector, MVector
+import AbstractTensors: basis, complementleft, complementlefthodge, unit, involute, clifford
+abstract type TensorTerm{V,G} <: TensorGraded{V,G} end
 
-abstract type Polynomial{V,G} <: Operator{V} end
+## utilities
 
-+(d::O) where O<:Operator = d
-+(r,d::O) where O<:Operator = d+r
+include("utilities.jl")
 
-struct Monomial{V,G,D,O,T} <: Polynomial{V,G}
-    v::T
-end
+#="""
+    floatprecision(s)
 
-Monomial{V,G,D}() where {V,G,D} = Monomial{V,G,D}(true)
-Monomial{V,G,D}(v::T) where {V,G,D,T} = Monomial{V,G,D,1,T}(v)
-Monomial{V,G,D,O}() where {V,G,D,O,T} = Monomial{V,G,D,O}(true)
-Monomial{V,G,D,O}(v::T) where {V,G,D,O,T} = Monomial{V,G,D,O,T}(v)
+Set float precision for display Float64 coefficents.
 
-zero(::Monomial) = Monomial{V0,0,0,0}()
+Float coefficients `f` are printed as `@sprintf(s,f)`.
 
-value(d::Monomial{V,G,D,T} where {V,G,D}) where T = d.v
+If `s == ""` (default), then `@sprintf` is not used.
+"""
+const floatprecision = ( () -> begin
+        gs::String = ""
+        return (tf=gs)->(gs≠tf && (gs=tf); return gs)
+    end)()
+export floatprecision
 
-sups(O) = O ≠ 1 ? DirectSum.sups[O] : ""
+macro fprintf()
+    s = floatprecision()
+    isempty(s) ? :(m.v) : :(Printf.@sprintf($s,m.v))
+end=#
 
-show(io::IO,d::Monomial{V,G,D,O,Bool} where G) where {V,D,O} = print(io,value(d) ? "" : "-",pre[mixedmode(V)>0 ? 4 : 3],[DirectSum.subs[k] for k ∈ DirectSum.shift_indices(V,UInt(D))]...,sups(O))
-show(io::IO,d::Monomial{V,G,D,O} where G) where {V,D,O} = print(io,value(d),pre[mixedmode(V)>0 ? 4 : 3],[DirectSum.subs[k] for k ∈ DirectSum.shift_indices(V,UInt(D))]...,sups(O))
-show(io::IO,d::Monomial{V,G,D,0,Bool} where {V,G,D}) = print(io,value(d) ? 1 : -1)
-show(io::IO,d::Monomial{V,G,0,O,Bool} where {V,G,O}) = print(io,value(d) ? 1 : -1)
-show(io::IO,d::Monomial{V,0,D,O,Bool} where {V,D,O}) = print(io,value(d) ? 1 : -1)
-show(io::IO,d::Monomial{V,G,D,0} where {V,G,D}) = print(io,value(d))
-show(io::IO,d::Monomial{V,G,0} where {V,G}) = print(io,value(d))
-show(io::IO,d::Monomial{V,0} where V) = print(io,value(d))
-show(io::IO,d::Monomial{V,G,D,UInt(0),Bool} where {V,G,D}) = print(io,value(d) ? 1 : -1)
-show(io::IO,d::Monomial{V,G,UInt(0),O,Bool} where {V,G,O}) = print(io,value(d) ? 1 : -1)
-show(io::IO,d::Monomial{V,UInt(0),D,O,Bool} where {V,D,O}) = print(io,value(d) ? 1 : -1)
-show(io::IO,d::Monomial{V,G,D,UInt(0)} where {V,G,D}) = print(io,value(d))
-show(io::IO,d::Monomial{V,G,UInt(0)} where {V,G}) = print(io,value(d))
-show(io::IO,d::Monomial{V,UInt(0)} where V) = print(io,value(d))
+# symbolic print types
 
-indexint(D) = DirectSum.bit2int(DirectSum.indexbits(max(D...),D))
+parval = (Expr,Complex,Rational,TensorAlgebra)
 
-#∂(D::T...) where T<:Integer = Monomial{V0,length(D),indexint(D)}()
-#∂(V::S,D::T...) where {S<:Manifold,T<:Integer} = Monomial{V,length(D),indexint(D)}()
+# number fields
 
-*(r,d::Monomial) = d*r
-*(d::Monomial{V,G,D,0} where {V,G,D},r) = r
-*(d::Monomial{V,G,0,O} where {V,G,O},r) = r
-*(d::Monomial{V,0,D,O} where {V,D,O},r) = r
-function *(a::Monomial{V,1,D,O1},b::Monomial{V,1,D,O2}) where {V,D,O1,O2}
-    O = O1+O2
-    O > diffmode(V) && (return 0)
-    c = a.v*b.v
-    iszero(c) ? 0 : Monomial{V,2,D,O1+O2}(c)
-end
-function *(a::Monomial{V,1,D,1},b::Monomial{V,1,D,1}) where {V,D,O1,O2}
-    2 > diffmode(V) && (return 0)
-    c = a.v*b.v
-    iszero(c) ? 0 : Monomial{V,2,D,2}(c)
-end
-function *(a::Monomial{V,1,D1,1},b::Monomial{V,1,D2,1}) where {V,D1,D2}
-    2 > diffmode(V) && (return 0)
-    c = a.v*b.v
-    iszero(c) ? 0 : Monomial{V,2,D1|D2}(c)
-end
-*(a::Monomial{V,G,D,O,Bool},b::I) where {V,G,D,O,I<:Number} = isone(b) ? a : Monomial{V,G,D,O,I}(value(a) ? b : -b)
-*(a::Monomial{V,G,D,O,T},b::I) where {V,G,D,O,T,I<:Number} = isone(b) ? a : Monomial{V,G,D,O}(value(a)*b)
-+(a::Monomial{V,G,D,O},b::Monomial{V,G,D,O}) where {V,G,D,O} = (c=a.v+b.v; iszero(c) ? 0 : Monomial{V,G,D,O}(c))
--(a::Monomial{V,G,D,O},b::Monomial{V,G,D,O}) where {V,G,D,O} = (c=a.v-b.v; iszero(c) ? 0 : Monomial{V,G,D,O}(c))
-#-(d::Monomial{V,G,D,O,Bool}) where {V,G,D,O} = Monomial{V,G,D,O,Bool}(!value(d))
--(d::Monomial{V,G,D,O}) where {V,G,D,O} = Monomial{V,G,D,O}(-value(d))
-function ^(d::Monomial{V,G,D,O},o::T) where {V,G,D,O,T<:Integer}
-    Oo = O*o
-    GOo = G+Oo
-    GOo > diffmode(V) && (return 0)
-    iszero(o) ? 1 : Monomial{V,GOo,D,Oo}(value(d)^o)
-end
-function ^(d::Monomial{V,G,D,O,Bool},o::T) where {V,G,D,O,T<:Integer}
-    Oo = O*o
-    GOo = G+Oo
-    GOo > diffmode(V) && (return 0)
-    iszero(o) ? 1 : Monomial{V,GOo,D,Oo}(value(d) ? true : iseven(o))
-end
+const Fields = (Real,Complex)
+const Field = Fields[1]
+const ExprField = Union{Expr,Symbol}
 
-struct OperatorExpr{T} <: Operator{T}
-    expr::T
-end
+extend_field(Field=Field) = (global parval = (parval...,Field))
 
-macro operator(expr)
-    OperatorExpr(expr)
-end
-
-show(io::IO,d::OperatorExpr) = print(io,'(',d.expr,')')
-
-add(d,n) = OperatorExpr(Expr(:call,:+,d,n))
-
-function plus(d::OperatorExpr{T},n) where T
-    iszero(n) && (return d)
-    if T == Expr
-        if d.expr.head == :call
-            if d.expr.args[1] == :+
-                return OperatorExpr(Expr(:call,:+,push!(copy(d.expr.args[2:end]),n)...))
-            elseif d.expr.args[1] == :- && length(d.expr.args) == 2 && d.expr.args[2] == n
-                return 0
-            else
-                return OperatorExpr(Expr(:call,:+,d.expr,n))
-            end
-        else
-            throw(error("Operator expression not implemented"))
-        end
-    else
-        OperatorExpr(d.expr+n)
+for T ∈ Fields
+    @eval begin
+        Base.:(==)(a::T,b::TensorTerm{V,G} where V) where {T<:$T,G} = G==0 ? a==value(b) : 0==a==value(b)
+        Base.:(==)(a::TensorTerm{V,G} where V,b::T) where {T<:$T,G} = G==0 ? value(a)==b : 0==value(a)==b
     end
 end
 
-+(d::Monomial,n::T) where T<:Number = iszero(n) ? d : add(d,n)
-+(d::Monomial,n::Monomial) = add(d,n)
-+(d::OperatorExpr,n) = plus(d,n)
-+(d::OperatorExpr,n::O) where O<:Operator = plus(d,n)
--(d::OperatorExpr) = OperatorExpr(Expr(:call,:-,d))
+Base.:(==)(a::TensorTerm,b::TensorTerm) = 0 == value(a) == value(b)
 
-#add(d,n) = OperatorExpr(Expr(:call,:+,d,n))
-
-function times(d::OperatorExpr{T},n) where T
-    iszero(n) && (return 0)
-    isone(n) && (return d)
-    if T == Expr
-        if d.expr.head == :call
-            if d.expr.args[1] ∈ (:+,:-)
-                return OperatorExpr(Expr(:call,:+,(d.expr.args[2:end] .* Ref(n))...))
-            elseif d.expr.args[1] == :*
-                (d.expr.args[2]*n)*d.expr.args[3] + d.expr.args[2]*(d.expr.args[3]*n)
-            elseif d.expr.args[1] == :/
-                (d.expr.args[2]*n)/d.expr.args[3] - (d.expr.args[2]*(d.expr.args[3]*n))/(d.expr.args[3]^2)
-            else
-                return OperatorExpr(Expr(:call,:*,d.expr,n))
-            end
-        else
-            throw(error("Operator expression not implemented"))
-        end
-    else
-        OperatorExpr(d.expr*n)
+for T ∈ (Fields...,Symbol,Expr)
+    @eval begin
+        Base.isapprox(a::S,b::T) where {S<:TensorAlgebra,T<:$T} = Base.isapprox(a,Simplex{Manifold(a)}(b))
+        Base.isapprox(a::S,b::T) where {S<:$T,T<:TensorAlgebra} = Base.isapprox(b,a)
     end
 end
 
-*(d::OperatorExpr,n::Monomial) = times(d,n)
-*(d::OperatorExpr,n::OperatorExpr) = OperatorExpr(Expr(:call,:*,d,n))
-*(n::T,d::OperatorExpr) where T<:Number = OperatorExpr(DirectSum.∏(n,d.expr))
+## fundamentals
 
-*(a::Monomial{V,1},b::Monomial{V,1,D,O}) where {V,D,O} = Monomial{V,1,D,O}(a*OperatorExpr(b.v))
-*(a::Monomial,b::Monomial{V,G,D,O}) where {V,G,D,O} = Monomial{V,G,D,O}(a*OperatorExpr(b.v))
-*(a::Monomial{V,G,D,O},b::OperatorExpr) where {V,G,D,O} = Monomial{V,G,D,O}(value(a)*b.expr)
+"""
+    getbasis(V::Manifold,v)
 
-^(d::OperatorExpr,n::T) where T<:Integer = iszero(n) ? 1 : isone(n) ? d : OperatorExpr(Expr(:call,:^,d,n))
+Fetch a specific `SubManifold{G,V}` element from an optimal `SubAlgebra{V}` selection.
+"""
+@inline getbasis(V,b) = getbasis(V,UInt(b))
 
-## generic
+Base.one(V::T) where T<:TensorGraded = one(Manifold(V))
+Base.zero(V::T) where T<:TensorGraded = zero(Manifold(V))
 
-Base.signbit(::O) where O<:Operator = false
-Base.abs(d::O) where O<:Operator = d
+@pure g_one(::Type{T}) where T = one(T)
+@pure g_zero(::Type{T}) where T = zero(T)
+
+## Derivation
 
 struct Derivation{T,O}
     v::UniformScaling{T}
@@ -174,19 +93,19 @@ end
 Derivation{T}(v::UniformScaling{T}) where T = Derivation{T,1}(v)
 Derivation(v::UniformScaling{T}) where T = Derivation{T}(v)
 
-show(io::IO,v::Derivation{Bool,O}) where O = print(io,(v.v.λ ? "" : "-"),"∂ₖ",O==1 ? "" : DirectSum.sups[O],"v",isodd(O) ? "ₖ" : "")
-show(io::IO,v::Derivation{T,O}) where {T,O} = print(io,v.v.λ,"∂ₖ",O==1 ? "" : DirectSum.sups[O],"v",isodd(O) ? "ₖ" : "")
+show(io::IO,v::Derivation{Bool,O}) where O = print(io,(v.v.λ ? "" : "-"),"∂ₖ",O==1 ? "" : AbstractTensors.sups[O],"v",isodd(O) ? "ₖ" : "")
+show(io::IO,v::Derivation{T,O}) where {T,O} = print(io,v.v.λ,"∂ₖ",O==1 ? "" : AbstractTensors.sups[O],"v",isodd(O) ? "ₖ" : "")
 
--(v::Derivation{Bool,O}) where {T,O} = Derivation{Bool,O}(UniformScaling{Bool}(!v.v.λ))
--(v::Derivation{T,O}) where {T,O} = Derivation{T,O}(UniformScaling{T}(-v.v.λ))
+Base.:-(v::Derivation{Bool,O}) where {T,O} = Derivation{Bool,O}(UniformScaling{Bool}(!v.v.λ))
+Base.:-(v::Derivation{T,O}) where {T,O} = Derivation{T,O}(UniformScaling{T}(-v.v.λ))
 
-function ^(v::Derivation{T,O},n::S) where {T,O,S<:Integer}
+function Base.:^(v::Derivation{T,O},n::S) where {T,O,S<:Integer}
     x = T<:Bool ? (isodd(n) ? v.v.λ : true ) : v.v.λ^n
     t = typeof(x)
     Derivation{t,O*n}(UniformScaling{t}(x))
 end
 
-for op ∈ (:+,:-,:*)
+for op ∈ (:(Base.:+),:(Base.:-),:(Base.:*))
     @eval begin
         $op(a::Derivation{A,O},b::Derivation{B,O}) where {A,B,O} = Derivation{promote_type(A,B),O}($op(a.v,b.v))
         $op(a::Derivation{A,O},b::B) where {A,B<:Number,O} = Derivation{promote_type(A,B),O}($op(a.v,b))
@@ -196,16 +115,16 @@ end
 
 unitype(::UniformScaling{T}) where T = T
 
-/(a::Derivation{A,O},b::Derivation{B,O}) where {A,B,O} = (x=a.v/b.v; Derivation{unitype(x),O}(x))
-/(a::Derivation{A,O},b::B) where {A,B<:Number,O} = (x=a.v/b; Derivation{unitype(x),O}(x))
-#/(a::A,b::Derivation{B,O}) where {A<:Number,B,O} = (x=a/b.v; Derivation{typeof(x),O}(x))
-\(a::Derivation{A,O},b::Derivation{B,O}) where {A,B,O} = (x=a.v\b.v; Derivation{unitype(x),O}(x))
-\(a::A,b::Derivation{B,O}) where {A<:Number,B,O} = (x=a\b.v; Derivation{unitype(x),O}(x))
+Base.:/(a::Derivation{A,O},b::Derivation{B,O}) where {A,B,O} = (x=Base.:/(a.v,b.v); Derivation{unitype(x),O}(x))
+Base.:/(a::Derivation{A,O},b::B) where {A,B<:Number,O} = (x=Base.:/(a.v,b); Derivation{unitype(x),O}(x))
+#Base.:/(a::A,b::Derivation{B,O}) where {A<:Number,B,O} = (x=Base.:/(a,b.v); Derivation{typeof(x),O}(x))
+Base.:\(a::Derivation{A,O},b::Derivation{B,O}) where {A,B,O} = (x=a.v\b.v; Derivation{unitype(x),O}(x))
+Base.:\(a::A,b::Derivation{B,O}) where {A<:Number,B,O} = (x=a\b.v; Derivation{unitype(x),O}(x))
 
 import AbstractTensors: ∧, ∨
 import LinearAlgebra: dot, cross
 
-for op ∈ (:+,:-,:*,:/,:\,:∧,:∨,:dot,:cross)
+for op ∈ (:(Base.:+),:(Base.:-),:(Base.:*),:(Base.:/),:(Base.:\),:∧,:∨,:dot,:cross)
     @eval begin
         $op(a::Derivation,b::B) where B<:TensorAlgebra = $op(Manifold(b)(a),b)
         $op(a::A,b::Derivation) where A<:TensorAlgebra = $op(a,Manifold(a)(b))
@@ -216,6 +135,16 @@ const ∇ = Derivation(LinearAlgebra.I)
 const Δ = ∇^2
 
 function d end
+function ∂ end
+
+include("generic.jl")
+include("operations.jl")
+include("indices.jl")
+
+bladeindex(cache_limit,one(UInt))
+basisindex(cache_limit,one(UInt))
+
+indexbasis(Int((sparse_limit+cache_limit)/2),1)
 
 #=function __init__()
     @require Reduce="93e0c654-6965-5f22-aba9-9c1ae6b3c259" include("symbolic.jl")
