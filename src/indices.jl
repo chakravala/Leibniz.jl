@@ -204,34 +204,3 @@ function indexparity!(ind::Vector{Int},s)
     end
     return t, ind, false
 end
-
-@noinline function indexparity(V::T,v::Symbol)::Tuple{Bool,Vector,T,Bool} where T
-    vs = string(v)
-    vt = vs[1:1]≠pre[1]
-    Z=match(Regex("([$(pre[1])]([0-9a-vx-zA-VX-Z]+))?([$(pre[2])]([0-9a-zA-Z]+))?"),vs)
-    ef = String[]
-    for k ∈ (2,4)
-        Z[k] ≠ nothing && push!(ef,Z[k])
-    end
-    length(ef) == 0 && (return false,Int[],V,true)
-    let W = V,fs=false
-        C = dyadmode(V)
-        X = C≥0 && mdims(V)<4sizeof(UInt)+1
-        X && (W = T<:Int ? 2V : (C>0 ? V'⊕V : V⊕V'))
-        V2 = (vt ⊻ (vt ? C≠0 : C>0)) ? V' : V
-        L = length(ef) > 1
-        M = X ? Int(mdims(W)/2) : mdims(W)
-        m = ((!L) && vt && (C<0)) ? M : 0
-        chars = (L || (Z[2] ≠ nothing)) ? alphanumv : alphanumw
-        (es,e,et) = indexparity!([findfirst(isequal(ef[1][k]),chars) for k∈1:length(ef[1])].+m,C<0 ? V : V2)
-        et && (return false,Int[],V,true)
-        w,d = if L
-            (fs,f,ft) = indexparity!([findfirst(isequal(ef[2][k]),alphanumw) for k∈1:length(ef[2])].+M,W)
-            ft && (return false,Int[],V,true)
-            W,[e;f]
-        else
-            V2,e
-        end
-        return es⊻fs, d, w, false
-    end
-end

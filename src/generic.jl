@@ -118,7 +118,7 @@ end
 ## functors
 
 @pure loworder(N::Int) = N
-function supermanifold end
+@pure supermanifold(N::Int) = N
 
 ## adjoint parities
 

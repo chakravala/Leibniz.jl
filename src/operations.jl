@@ -38,7 +38,7 @@ end
 
 ## conversions
 
-@pure function mixed(V::M,ibk::UInt) where M<:Manifold
+@pure function mixed(V,ibk::UInt)
     N,D,VC = mdims(V),diffvars(V),isdual(V)
     return if D≠0
         A,B = ibk&(UInt(1)<<(N-D)-1),ibk&diffmask(V)
@@ -48,13 +48,14 @@ end
     end
 end
 
-@pure function combine(v::M,w::T,iak::UInt,ibk::UInt) where {T<:Manifold,M<:Manifold}
+@pure function combine(v,w,iak::UInt,ibk::UInt)
     (isdual(v) ≠ isdual(w)) && throw(error("$v and $w incompatible"))
     V,W = supermanifold(v),supermanifold(w)
     return if istangent(V)||istangent(W)
-        gras1,gras2 = iak&(UInt(1)<<grade(V)-1),ibk&(UInt(1)<<grade(W)-1)
+        gV,gW = (typeof(V)<:Int ? V : grade(V)),(typeof(W)<:Int ? W : grade(W))
+        gras1,gras2 = iak&(UInt(1)<<gV-1),ibk&(UInt(1)<<gW-1)
         diffs = (iak&diffmask(W))|(ibk&diffmask(W))
-        gras1|(gras2<<grade(V))|(diffs<<mdims(W)) # A|(B<<(N-D))
+        gras1|(gras2<<gV)|(diffs<<mdims(W)) # A|(B<<(N-D))
     else
         iak|(ibk<<mdims(V)) # ibk
     end
