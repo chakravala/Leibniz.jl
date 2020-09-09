@@ -63,14 +63,14 @@ end
 
 # index sets
 index_limit = 20
-const digits_fast_cache = Vector{SVector}[]
-const digits_fast_extra = Dict{UInt,SVector}[]
-@pure digits_fast_calc(b,N) = SVector{N+1,Int}(digits(b,base=2,pad=N+1))
+const digits_fast_cache = Vector{Values}[]
+const digits_fast_extra = Dict{UInt,Values}[]
+@pure digits_fast_calc(b,N) = Values{N+1,Int}(digits(b,base=2,pad=N+1))
 @pure function digits_fast(b,N)
     if N>index_limit
         n = N-index_limit
         for k ∈ length(digits_fast_extra)+1:n
-            push!(digits_fast_extra,Dict{UInt,SVector{k+1,Int}}())
+            push!(digits_fast_extra,Dict{UInt,Values{k+1,Int}}())
         end
         !haskey(digits_fast_extra[n],b) && push!(digits_fast_extra[n],b=>digits_fast_calc(b,N))
         @inbounds digits_fast_extra[n][b]
@@ -84,7 +84,7 @@ const digits_fast_extra = Dict{UInt,SVector}[]
 end
 
 const indices_cache = Dict{UInt,Vector{Int}}()
-indices(b::Bits) = findall(digits(b,base=2).==1)
+indices(b::UInt) = findall(digits(b,base=2).==1)
 function indices_calc(b::UInt,N::Int)
     d = digits_fast(b,N)
     l = length(d)
@@ -146,7 +146,7 @@ end
         n = Int((N-2D)/2)
         eps = shift_indices(V,e & db[1]).-(N-2D-hasinf(M)-hasorigin(M))
         par = shift_indices(V,e & db[2]).-(N-D-hasinf(M)-hasorigin(M))
-        printindices(io,shift_indices(V,es & Bits(2^n-1)),shift_indices(V,es>>n),eps,par,label,vec,cov,duo,dif)
+        printindices(io,shift_indices(V,es & UInt(2^n-1)),shift_indices(V,es>>n),eps,par,label,vec,cov,duo,dif)
     else
         es = e & (~db)
         eps = shift_indices(V,e & db).-(N-D-hasinf(M)-hasorigin(M))
@@ -171,13 +171,13 @@ indexsymbol(V::M,D) where M<:Manifold = Symbol(indexstring(V,D))
 
 indexsplit(B,N) = [UInt(1)<<(k-1) for k ∈ indices(B,N)]
 
-indexparity!(ind::SVector{N,Int}) where N = indexparity!(MVector(ind))
-function indexparity!(ind::MVector{N,Int}) where N
+indexparity!(ind::Values{N,Int}) where N = indexparity!(Variables(ind))
+function indexparity!(ind::Variables{N,Int}) where N
     k = 1
     t = false
     while k < length(ind)
         if ind[k] > ind[k+1]
-            ind[SVector(k,k+1)] = ind[SVector(k+1,k)]
+            ind[Values(k,k+1)] = ind[Values(k+1,k)]
             t = !t
             k ≠ 1 && (k -= 1)
         else

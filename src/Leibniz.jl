@@ -10,12 +10,12 @@ import LinearAlgebra: det, rank
 
 ## Manifold{N}
 
-import AbstractTensors: TensorAlgebra, Manifold, TensorGraded, scalar, isscalar, involute
+import AbstractTensors: TensorAlgebra, Manifold, TensorGraded, TensorTerm
+import AbstractTensors: scalar, isscalar, involute
 import AbstractTensors: vector, isvector, bivector, isbivector, volume, isvolume, ⋆, mdims
 import AbstractTensors: value, valuetype, interop, interform, even, odd, isnull, norm
-import AbstractTensors: TupleVector, Values, Variables, FixedVector, SVector, MVector
+import AbstractTensors: TupleVector, Values, Variables, FixedVector
 import AbstractTensors: basis, complementleft, complementlefthodge, unit, involute, clifford
-abstract type TensorTerm{V,G} <: TensorGraded{V,G} end
 
 ## utilities
 

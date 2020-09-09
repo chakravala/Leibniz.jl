@@ -2,10 +2,10 @@
 #   This file is part of Leibniz.jl. It is licensed under the AGPL license
 #   Leibniz Copyright (C) 2019 Michael Reed
 
-export bits, basis, grade, order, options, metric, polymode, dyadmode, diffmode, diffvars
+export basis, grade, order, options, metric, polymode, dyadmode, diffmode, diffvars
 export valuetype, value, hasinf, hasorigin, isorigin, norm, indices, tangent, isbasis, ≅
 
-@pure grade(V::M) where M<:Manifold{N} where N = N-(isdyadic(V) ? 2 : 1)*diffvars(V)
+@pure grade(V::M) where M<:Manifold = rank(V)-(isdyadic(V) ? 2 : 1)*diffvars(V)
 @pure grade(m::T) where T<:Real = 0
 @pure order(m) = 0
 @pure order(V::M) where M<:Manifold = diffvars(V)
@@ -48,7 +48,7 @@ end
 @pure hasorigin(t::M) where M<:Manifold = hasorigin(Manifold(t))
 #@pure hasorigin(m::T) where T<:TensorAlgebra = hasorigin(Manifold(m))
 
-@pure hasorigin(V,B::UInt) = hasinf(V) ? (Bits(2)&B)==Bits(2) : isodd(B)
+@pure hasorigin(V,B::UInt) = hasinf(V) ? (UInt(2)&B)==UInt(2) : isodd(B)
 
 @pure function hasinf(V,A::UInt,B::UInt)
     hasconformal(V) && (isodd(A) || isodd(B))

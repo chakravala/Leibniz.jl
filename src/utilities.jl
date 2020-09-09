@@ -8,7 +8,7 @@ import AbstractTensors: sqrt, abs, exp, expm1, log, log1p, sin, cos, sinh, cosh,
 Bits,bits = UInt,UInt
 
 const VTI = Union{Vector{Int},Tuple,NTuple}
-const SVTI = Union{Vector{Int},Tuple,NTuple,SVector}
+const SVTI = Union{Vector{Int},Tuple,NTuple,Values}
 
 bit2int(b::BitArray{1}) = parse(UInt,join(reverse([t ? '1' : '0' for t ∈ b])),base=2)
 
@@ -84,14 +84,14 @@ function combo(n::Int,g::Int)::Vector{Vector{Int}}
     end
 end
 
-binomsum_calc(n) = SVector{n+2,Int}([0;cumsum([binomial(n,q) for q=0:n])])
-const binomsum_cache = (SVector{N,Int} where N)[SVector(0),SVector(0,1)]
-const binomsum_extra = (SVector{N,Int} where N)[]
+binomsum_calc(n) = Values{n+2,Int}([0;cumsum([binomial(n,q) for q=0:n])])
+const binomsum_cache = (Values{N,Int} where N)[Values(0),Values(0,1)]
+const binomsum_extra = (Values{N,Int} where N)[]
 @pure function binomsum(n::Int, i::Int)::Int
     if n>sparse_limit
         N=n-sparse_limit
         for k ∈ length(binomsum_extra)+1:N
-            push!(binomsum_extra,SVector{0,Int}())
+            push!(binomsum_extra,Values{0,Int}())
         end
         @inbounds isempty(binomsum_extra[N]) && (binomsum_extra[N]=binomsum_calc(n))
         @inbounds binomsum_extra[N][i+1]
@@ -102,11 +102,11 @@ const binomsum_extra = (SVector{N,Int} where N)[]
         @inbounds binomsum_cache[n+1][i+1]
     end
 end
-@pure function binomsum_set(n::Int)::(SVector{N,Int} where N)
+@pure function binomsum_set(n::Int)::(Values{N,Int} where N)
     if n>sparse_limit
         N=n-sparse_limit
         for k ∈ length(binomsum_extra)+1:N
-            push!(binomsum_extra,SVector{0,Int}())
+            push!(binomsum_extra,Values{0,Int}())
         end
         @inbounds isempty(binomsum_extra[N]) && (binomsum_extra[N]=binomsum_calc(n))
         @inbounds binomsum_extra[N]
@@ -198,7 +198,7 @@ const indexbasis_extra = Vector{Vector{UInt}}[]
     end
 end
 @pure indexbasis(N) = vcat(indexbasis(N,0),indexbasis_set(N)...)
-@pure indexbasis_set(N) = SVector(((N≠0 && N<sparse_limit) ? @inbounds(indexbasis_cache[N]) : Vector{Bits}[indexbasis(N,g) for g ∈ 0:N])...)
+@pure indexbasis_set(N) = Values(((N≠0 && N<sparse_limit) ? @inbounds(indexbasis_cache[N]) : Vector{UInt}[indexbasis(N,g) for g ∈ 0:N])...)
 
 # SubManifold
 
