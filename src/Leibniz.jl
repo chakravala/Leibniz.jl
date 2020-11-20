@@ -7,6 +7,7 @@ using LinearAlgebra, AbstractTensors
 export Manifold, Differential, Derivation, d, ∂, ∇, Δ
 import Base: getindex, convert, @pure, +, *, ∪, ∩, ⊆, ⊇, ==, show, zero
 import LinearAlgebra: det, rank
+import Grassmann: Simplex
 
 ## Manifold{N}
 
