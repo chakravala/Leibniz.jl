@@ -192,7 +192,7 @@ function indexparity!(ind::Vector{Int},s)
     while k < length(ind)
         if ind[k] == ind[k+1]
             ind[k] == 1 && hasinf(s) && (return t, ind, true)
-            s[ind[k]] && (t = !t)
+            isone(s[ind[k]]) && (t = !t)
             deleteat!(ind,[k,k+1])
         elseif ind[k] > ind[k+1]
             ind[[k,k+1]] = ind[[k+1,k]]
