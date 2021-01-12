@@ -24,9 +24,12 @@ end
 
 export isdyadic, isdual, istangent
 const mixedmode = dyadmode
-@pure isdyadic(t::T) where T<:TensorAlgebra = dyadmode(Manifold(t))<0
-@pure isdual(t::T) where T<:TensorAlgebra = dyadmode(Manifold(t))>0
-@pure istangent(t::T) where T<:TensorAlgebra = diffvars(Manifold(t))≠0
+@pure isdyadic(t::Type{<:TensorAlgebra}) = dyadmode(Manifold(t))<0
+@pure isdual(t::Type{<:TensorAlgebra}) = dyadmode(Manifold(t))>0
+@pure istangent(t::Type{<:TensorAlgebra}) = diffvars(Manifold(t))≠0
+@pure isdyadic(::T) where T<:TensorAlgebra = isdyadic(T)
+@pure isdual(::T) where T<:TensorAlgebra = isdual(T)
+@pure istangent(::T) where T<:TensorAlgebra = istangent(T)
 
 @pure isbasis(x) = false
 @pure isdyadic(::Int) = false
