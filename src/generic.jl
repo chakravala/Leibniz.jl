@@ -17,7 +17,10 @@ export valuetype, value, hasinf, hasorigin, isorigin, norm, indices, tangent, is
 @pure diffmode(::Int) = 0
 @pure diffvars(::Int) = 0
 for mode ∈ (:options,:polymode,:dyadmode,:diffmode,:diffvars)
-    @eval @pure $mode(t::T) where T<:TensorAlgebra = $mode(Manifold(t))
+    @eval begin
+        @pure $mode(t::T) where T<:TensorAlgebra = $mode(Manifold(t))
+        @pure $mode(t::Type{<:TensorAlgebra}) = $mode(Manifold(t))
+    end
 end
 
 @pure ≅(a,b) = grade(a) == grade(b) && order(a) == order(b) && diffmode(a) == diffmode(b)
