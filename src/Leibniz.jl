@@ -131,7 +131,6 @@ function d end
 function ∂ end
 
 include("generic.jl")
-include("operations.jl")
 include("indices.jl")
 
 bladeindex(cache_limit,one(UInt))
