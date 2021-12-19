@@ -74,6 +74,8 @@ const digits_fast_extra = Dict{UInt,Values}[]
         end
         !haskey(digits_fast_extra[n],b) && push!(digits_fast_extra[n],b=>digits_fast_calc(b,N))
         @inbounds digits_fast_extra[n][b]
+    elseif N==0
+        Values{1,Int}(0)
     else
         for k ∈ length(digits_fast_cache)+1:min(N,index_limit)
             push!(digits_fast_cache,[digits_fast_calc(d,k) for d ∈ 0:1<<(k+1)-1])
@@ -160,6 +162,24 @@ end
 end
 
 @inline printlabel(V::T,e::UInt,label::Bool,vec,cov,duo,dif) where T<:Manifold = printlabel(IOBuffer(),V,e,label,vec,cov,duo,dif) |> take! |> String
+
+showparens(T) = !|(broadcast(<:,T,parnot)...) && |(broadcast(<:,T,parval)...)
+
+function showstar(io::IO,v)
+    if !(isa(v,Integer) && !isa(v,Bool) || isa(v,AbstractFloat) && isfinite(v))
+        print(io, "*")
+    end
+end
+
+function showvalue(io::IO,V,B::UInt,i::T) where T
+    if showparens(T)
+        print(io,"(",i,")")
+    else
+        show(io,i)
+        showstar(io,i)
+    end
+    printindices(io,V,B)
+end
 
 function indexstring(V::M,D) where M<:Manifold
     io = IOBuffer()

@@ -44,6 +44,7 @@ end=#
 # symbolic print types
 
 parval = (Expr,Complex,Rational,TensorAlgebra)
+parnot = (TensorTerm,)
 
 # number fields
 
@@ -52,6 +53,7 @@ const Field = Fields[1]
 const ExprField = Union{Expr,Symbol}
 
 extend_field(Field=Field) = (global parval = (parval...,Field))
+extend_parnot(Field) = (global parnot = (parnot...,Field))
 
 for T ∈ Fields
     @eval begin

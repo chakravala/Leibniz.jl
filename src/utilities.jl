@@ -10,7 +10,7 @@ Bits,bits = UInt,UInt
 const VTI = Union{Vector{Int},Tuple,NTuple}
 const SVTI = Union{Vector{Int},Tuple,NTuple,Values}
 
-bit2int(b::BitArray{1}) = parse(UInt,join(reverse([t ? '1' : '0' for t ∈ b])),base=2)
+bit2int(b::BitArray{1}) = isempty(b) ? UInt(0) : parse(UInt,join(reverse([t ? '1' : '0' for t ∈ b])),base=2)
 
 AbstractTensors.:-(x::Values) = Base.:-(x)
 AbstractTensors.:-(x::Values{N,Any} where N) = broadcast(-,x)
