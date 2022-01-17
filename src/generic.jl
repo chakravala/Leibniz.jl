@@ -149,59 +149,9 @@ const parityconj = parityreverse
 
 ## reverse
 
-import Base: reverse, ~
-export involute, clifford
-
 @pure grade_basis(V::Int,B) = B&(one(UInt)<<V-1)
 @pure grade_basis(V,B) = B&(one(UInt)<<grade(V)-1)
-@pure grade(V,B) = count_ones(grade_basis(V,B))
-
-@doc """
-    ~(ω::TensorAlgebra)
-
-Reverse of an element: ~ω = (-1)^(grade(ω)*(grade(ω)-1)/2)*ω
-""" Base.conj
-#reverse(a::UniformScaling{Bool}) = UniformScaling(!a.λ)
-#reverse(a::UniformScaling{T}) where T<:Field = UniformScaling(-a.λ)
-
-"""
-    reverse(ω::TensorAlgebra)
-
-Reverse of an element: ~ω = (-1)^(grade(ω)*(grade(ω)-1)/2)*ω
-"""
-@inline Base.:~(b::TensorAlgebra) = Base.conj(b)
-#@inline ~(b::UniformScaling) = reverse(b)
-
-@doc """
-    involute(ω::TensorAlgebra)
-
-Involute of an element: ~ω = (-1)^grade(ω)*ω
-""" involute
-
-@doc """
-    clifford(ω::TensorAlgebra)
-
-Clifford conjugate of an element: clifford(ω) = involute(conj(ω))
-""" clifford
-
-odd(t::T) where T<:TensorGraded{V,G} where {V,G} = parityinvolute(G) ? t : zero(V)
-even(t::T) where T<:TensorGraded{V,G} where {V,G} = parityinvolute(G) ? zero(V) : t
-
-"""
-    imag(ω::TensorAlgebra)
-
-The `imag` part `(ω-(~ω))/2` is defined by `abs2(imag(ω)) == -(imag(ω)^2)`.
-"""
-Base.imag(t::T) where T<:TensorGraded{V,G} where {V,G} = parityreverse(G) ? t : zero(V)
-
-"""
-real(ω::TensorAlgebra)
-
-The `real` part `(ω+(~ω))/2` is defined by `abs2(real(ω)) == real(ω)^2`.
-"""
-Base.real(t::T) where T<:TensorGraded{V,G} where {V,G} = parityreverse(G) ? zero(V) : t
-
-Base.isfinite(b::T) where T<:TensorTerm = isfinite(value(b))
+@pure grade(V,B::UInt) = count_ones(grade_basis(V,B))
 
 # comparison (special case for scalars)
 
@@ -289,8 +239,7 @@ end
 
 # Hodge star ★
 
-const complementrighthodge = ⋆
-const complementright = !
+import AbstractTensors: complementrighthodge, complementright
 
 ## complement
 

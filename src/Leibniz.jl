@@ -11,7 +11,7 @@ import LinearAlgebra: det, rank
 ## Manifold{N}
 
 import AbstractTensors: TensorAlgebra, Manifold, TensorGraded, TensorTerm
-import AbstractTensors: scalar, isscalar, involute
+import AbstractTensors: scalar, isscalar, involute, equal, complement
 import AbstractTensors: vector, isvector, bivector, isbivector, volume, isvolume, ⋆, mdims
 import AbstractTensors: value, valuetype, interop, interform, even, odd, isnull, norm
 import AbstractTensors: TupleVector, Values, Variables, FixedVector
@@ -62,7 +62,7 @@ for T ∈ Fields
     end
 end
 
-Base.:(==)(a::TensorTerm,b::TensorTerm) = 0 == value(a) == value(b)
+equal(a::TensorTerm,b::TensorTerm) = 0 == value(a) == value(b)
 
 ## fundamentals
 
@@ -72,12 +72,6 @@ Base.:(==)(a::TensorTerm,b::TensorTerm) = 0 == value(a) == value(b)
 Fetch a specific `SubManifold{G,V}` element from an optimal `SubAlgebra{V}` selection.
 """
 @inline getbasis(V,b) = getbasis(V,UInt(b))
-
-Base.one(V::T) where T<:TensorGraded = one(Manifold(V))
-Base.zero(V::T) where T<:TensorGraded = zero(Manifold(V))
-
-@pure g_one(::Type{T}) where T = one(T)
-@pure g_zero(::Type{T}) where T = zero(T)
 
 ## Derivation
 
