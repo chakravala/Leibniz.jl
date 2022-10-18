@@ -1,6 +1,16 @@
 
-#   This file is part of Leibniz.jl. It is licensed under the AGPL license
+#   This file is part of Leibniz.jl
+#   It is licensed under the AGPL license
 #   Leibniz Copyright (C) 2019 Michael Reed
+#       _           _                         _
+#      | |         | |                       | |
+#   ___| |__   __ _| | ___ __ __ ___   ____ _| | __ _
+#  / __| '_ \ / _` | |/ / '__/ _` \ \ / / _` | |/ _` |
+# | (__| | | | (_| |   <| | | (_| |\ V / (_| | | (_| |
+#  \___|_| |_|\__,_|_|\_\_|  \__,_| \_/ \__,_|_|\__,_|
+#
+#   https://github.com/chakravala
+#   https://crucialflow.com
 
 import AbstractTensors: conj, inv, PROD, SUM, -, /
 import AbstractTensors: sqrt, abs, exp, expm1, log, log1p, sin, cos, sinh, cosh, ^
@@ -18,12 +28,16 @@ AbstractTensors.:-(x::Values{N,Any} where N) = broadcast(-,x)
 
 @pure binomial(N,G) = Base.binomial(N,G)
 @pure binomial_set(N) = Values(Int[binomial(N,g) for g ∈ 0:N]...)
+@pure binomial_even(N) = Values(Int[binomial(N,g) for g ∈ 0:2:N]...)
 @pure intlog(M::Integer) = Int(log2(M))
 @pure promote_type(t...) = Base.promote_type(t...)
 @pure mvec(N,G,t) = Variables{binomial(N,G),t}
-@pure mvec(N,t) = Variables{2^N,t}
+@pure mvec(N,t) = Variables{1<<N,t}
 @pure svec(N,G,t) = FixedVector{binomial(N,G),t}
 @pure svec(N,t) = FixedVector{1<<N,t}
+@pure mvecs(N,t) = Variables{1<<(N-1),t}
+@pure svecs(N,t) = FixedVector{1<<(N-1),t}
+
 
 ## constructor
 
@@ -51,7 +65,8 @@ end
 
 ## cache
 
-export binomsum, bladeindex, basisindex, indexbasis, lowerbits, expandbits
+export binomsum, spinsum, bladeindex, spinindex, basisindex, indexbasis, indexeven
+export owerbits, expandbits
 
 const algebra_limit = 8
 const sparse_limit = 22
@@ -118,6 +133,40 @@ end
     end
 end
 
+spinsum_calc(n) = Values{n+2,Int}([0;cumsum([isodd(q) ? 0 : binomial(n,q) for q=0:n])])
+const spinsum_cache = (Values{N,Int} where N)[Values(0),Values(0,1)]
+const spinsum_extra = (Values{N,Int} where N)[]
+@pure function spinsum(n::Int, i::Int)::Int
+    if n>sparse_limit
+        N=n-sparse_limit
+        for k ∈ length(spinsum_extra)+1:N
+            push!(spinsum_extra,Values{0,Int}())
+        end
+        @inbounds isempty(spinsum_extra[N]) && (spinsum_extra[N]=spinsum_calc(n))
+        @inbounds spinsum_extra[N][i+1]
+    else
+        for k=length(spinsum_cache):n+1
+            push!(spinsum_cache,spinsum_calc(k))
+        end
+        @inbounds spinsum_cache[n+1][i+1]
+    end
+end
+@pure function spinsum_set(n::Int)::(Values{N,Int} where N)
+    if n>sparse_limit
+        N=n-sparse_limit
+        for k ∈ length(spinsum_extra)+1:N
+            push!(spinsum_extra,Values{0,Int}())
+        end
+        @inbounds isempty(spinsum_extra[N]) && (spinsum_extra[N]=spinsum_calc(n))
+        @inbounds spinsum_extra[N]
+    else
+        for k=length(spinsum_cache):n+1
+            push!(spinsum_cache,spinsum_calc(k))
+        end
+        @inbounds spinsum_cache[n+1]
+    end
+end
+
 @pure function bladeindex_calc(d,k)
     H = indices(UInt(d),k)
     findfirst(x->x==H,combo(k,count_ones(d)))
@@ -146,6 +195,33 @@ const bladeindex_extra = Vector{Int}[]
         @inbounds bladeindex_cache[n][s]
     end
 end
+
+@pure spinindex_calc(d,k) = spinsum(k,count_ones(d))+bladeindex(k,UInt(d))
+const spinindex_cache = Vector{Int}[]
+const spinindex_extra = Vector{Int}[]
+@pure function spinindex(n::Int,s::UInt)::Int
+    if s == 0
+        1
+    elseif n>(index_limit)
+        spinindex_calc(s,n)
+    elseif n>cache_limit
+        N = n-cache_limit
+        for k ∈ length(spinindex_extra)+1:N
+            push!(spinindex_extra,Int[])
+        end
+        @inbounds isempty(spinindex_extra[N]) && (spinindex_extra[N]=-ones(Int,1<<n-1))
+        @inbounds signbit(spinindex_extra[N][s]) && (spinindex_extra[N][s]=spinindex_calc(s,n))
+        @inbounds spinindex_extra[N][s]
+    else
+        j = length(spinindex_cache)+1
+        for k ∈ j:min(n,cache_limit)
+            push!(spinindex_cache,(spinindex_calc.(1:1<<k-1,k)))
+            GC.gc()
+        end
+        @inbounds spinindex_cache[n][s]
+    end
+end
+
 
 @inline basisindex_calc(d,k) = binomsum(k,count_ones(UInt(d)))+bladeindex(k,UInt(d))
 const basisindex_cache = Vector{Int}[]
@@ -199,6 +275,8 @@ const indexbasis_extra = Vector{Vector{UInt}}[]
 end
 @pure indexbasis(N) = vcat(indexbasis(N,0),indexbasis_set(N)...)
 @pure indexbasis_set(N) = Values(((N≠0 && N<sparse_limit) ? @inbounds(indexbasis_cache[N]) : Vector{UInt}[indexbasis(N,g) for g ∈ 0:N])...)
+@pure indexeven(N) = vcat(indexbasis(N,0),indexeven_set(N)...)
+@pure indexeven_set(N) = Values(((N≠0 && N<sparse_limit) ? @inbounds(indexbasis_cache[N]) : Vector{UInt}[indexbasis(N,g) for g ∈ 0:2:N])...)
 
 # SubManifold
 

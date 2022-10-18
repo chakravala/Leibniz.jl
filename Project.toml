@@ -1,7 +1,7 @@
 name = "Leibniz"
 uuid = "edad4870-8a01-11e9-2d75-8f02e448fc59"
 authors = ["Michael Reed"]
-version = "0.2"
+version = "0.2.1"
 
 [deps]
 AbstractTensors = "a8e43f4a-99b7-5565-8bf1-0165161caaea"

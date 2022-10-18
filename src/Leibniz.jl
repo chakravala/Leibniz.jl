@@ -1,7 +1,23 @@
 module Leibniz
 
-#   This file is part of Leibniz.jl. It is licensed under the AGPL license
+#   This file is part of Leibniz.jl
+#   It is licensed under the AGPL license
 #   Leibniz Copyright (C) 2019 Michael Reed
+#       _           _                         _
+#      | |         | |                       | |
+#   ___| |__   __ _| | ___ __ __ ___   ____ _| | __ _
+#  / __| '_ \ / _` | |/ / '__/ _` \ \ / / _` | |/ _` |
+# | (__| | | | (_| |   <| | | (_| |\ V / (_| | | (_| |
+#  \___|_| |_|\__,_|_|\_\_|  \__,_| \_/ \__,_|_|\__,_|
+#
+#   https://github.com/chakravala
+#   https://crucialflow.com
+#  .__           .__ ___.            .__
+#  |  |    ____  |__|\_ |__    ____  |__|________
+#  |  |  _/ __ \ |  | | __ \  /    \ |  |\___   /
+#  |  |__\  ___/ |  | | \_\ \|   |  \|  | /    /
+#  |____/ \___  >|__| |___  /|___|  /|__|/_____ \
+#             \/          \/      \/           \/
 
 using LinearAlgebra, AbstractTensors
 export Manifold, Differential, Derivation, d, ∂, ∇, Δ
@@ -85,7 +101,7 @@ Derivation(v::UniformScaling{T}) where T = Derivation{T}(v)
 show(io::IO,v::Derivation{Bool,O}) where O = print(io,(v.v.λ ? "" : "-"),"∂ₖ",O==1 ? "" : AbstractTensors.sups[O],"v",isodd(O) ? "ₖ" : "")
 show(io::IO,v::Derivation{T,O}) where {T,O} = print(io,v.v.λ,"∂ₖ",O==1 ? "" : AbstractTensors.sups[O],"v",isodd(O) ? "ₖ" : "")
 
-Base.:-(v::Derivation{Bool,O}) where {T,O} = Derivation{Bool,O}(UniformScaling{Bool}(!v.v.λ))
+Base.:-(v::Derivation{Bool,O}) where O = Derivation{Bool,O}(UniformScaling{Bool}(!v.v.λ))
 Base.:-(v::Derivation{T,O}) where {T,O} = Derivation{T,O}(UniformScaling{T}(-v.v.λ))
 
 function Base.:^(v::Derivation{T,O},n::S) where {T,O,S<:Integer}
