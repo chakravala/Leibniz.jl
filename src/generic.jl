@@ -4,7 +4,9 @@
 
 export basis, grade, order, options, metric, polymode, dyadmode, diffmode, diffvars
 export valuetype, value, hasinf, hasorigin, isorigin, norm, indices, tangent, isbasis, ≅
+export antigrade
 
+@pure antigrade(V::M) where M<:Manifold = mdims(V)-rank(V)-(isdyadic(V) ? 2 : 1)*diffvars(V)
 @pure grade(V::M) where M<:Manifold = rank(V)-(isdyadic(V) ? 2 : 1)*diffvars(V)
 @pure grade(m::T) where T<:Real = 0
 @pure order(m) = 0
@@ -152,6 +154,11 @@ const parityconj = parityreverse
 @pure grade_basis(V::Int,B) = B&(one(UInt)<<V-1)
 @pure grade_basis(V,B) = B&(one(UInt)<<grade(V)-1)
 @pure grade(V,B::UInt) = count_ones(grade_basis(V,B))
+
+## anti-reverse
+
+@pure antigrade(V::Int,B::UInt) = V-grade(V,B)
+@pure antigrade(V,B::UInt) = grade(V)-grade(V,B)
 
 # comparison (special case for scalars)
 
