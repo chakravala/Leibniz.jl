@@ -6,6 +6,8 @@ export basis, grade, order, options, metric, polymode, dyadmode, diffmode, diffv
 export valuetype, value, hasinf, hasorigin, isorigin, norm, indices, tangent, isbasis, ≅
 export antigrade
 
+@pure grade(::Type{M}) where M = rank(M)-(isdyadic(M) ? 2 : 1)*diffvars(M)
+@pure antigrade(::Type{M}) where M = mdims(M)-rank(M)-(isdyadic(M) ? 2 : 1)*diffvars(M)
 @pure antigrade(V::M) where M<:Manifold = mdims(V)-rank(V)-(isdyadic(V) ? 2 : 1)*diffvars(V)
 @pure grade(V::M) where M<:Manifold = rank(V)-(isdyadic(V) ? 2 : 1)*diffvars(V)
 @pure grade(m::T) where T<:Real = 0
