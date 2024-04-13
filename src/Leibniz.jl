@@ -147,6 +147,8 @@ include("indices.jl")
 
 bladeindex(cache_limit,one(UInt))
 basisindex(cache_limit,one(UInt))
+spinindex(cache_limit,one(UInt))
+antiindex(cache_limit,one(UInt))
 
 indexbasis(Int((sparse_limit+cache_limit)/2),1)
 

@@ -38,12 +38,11 @@ AbstractTensors.:-(x::Values{N,Any} where N) = broadcast(-,x)
 @pure mvecs(N,t) = Variables{1<<(N-1),t}
 @pure svecs(N,t) = FixedVector{1<<(N-1),t}
 
-
 ## constructor
 
 @inline assign_expr!(e,x::Vector{Any},v::Symbol,expr) = v ∈ e && push!(x,Expr(:(=),v,expr))
 
-function insert_expr(e,vec=:mvec,T=:(valuetype(a)),S=:(valuetype(b)),L=:(2^N);mv=0)
+function insert_expr(e,vec=:mvec,T=:(valuetype(a)),S=:(valuetype(b)),L=:(1<<N);mv=0)
     x = Any[] # Any[:(sigcheck(sig(a),sig(b)))]
     assign_expr!(e,x,:N,:(mdims(V)))
     assign_expr!(e,x,:M,:(Int(N/2)))
@@ -51,10 +50,12 @@ function insert_expr(e,vec=:mvec,T=:(valuetype(a)),S=:(valuetype(b)),L=:(2^N);mv
     assign_expr!(e,x,:out,mv≠0 ? :(t=Any;convert(svec(N,Any),out)) : :(zeros($vec(N,t))))
     assign_expr!(e,x,:r,:(binomsum(N,G)))
     assign_expr!(e,x,:rr,:(spinsum(N,G)))
+    assign_expr!(e,x,:rrr,:(antisum(N,G)))
     assign_expr!(e,x,:bng,:(binomial(N,G)))
     assign_expr!(e,x,:bnl,:(binomial(N,L)))
     assign_expr!(e,x,:ib,:(indexbasis(N,G)))
     assign_expr!(e,x,:rs,:(spinsum_set(N)))
+    assign_expr!(e,x,:ps,:(antisum_set(N)))
     assign_expr!(e,x,:bs,:(binomsum_set(N)))
     assign_expr!(e,x,:bn,:(binomial_set(N)))
     assign_expr!(e,x,:df,:(dualform(V)))
@@ -67,8 +68,8 @@ end
 
 ## cache
 
-export binomsum, spinsum, bladeindex, spinindex, basisindex, indexbasis, indexeven
-export owerbits, expandbits
+export binomsum, spinsum, antisum, lowerbits, expandbits
+export bladeindex, spinindex, antiindex, basisindex, indexbasis, indexeven, indexodd
 
 const algebra_limit = 8
 const sparse_limit = 22
@@ -102,70 +103,47 @@ function combo(n::Int,g::Int)::Vector{Vector{Int}}
 end
 
 binomsum_calc(n) = Values{n+2,Int}([0;cumsum([binomial(n,q) for q=0:n])])
-const binomsum_cache = (Values{N,Int} where N)[Values(0),Values(0,1)]
-const binomsum_extra = (Values{N,Int} where N)[]
-@pure function binomsum(n::Int, i::Int)::Int
-    if n>sparse_limit
-        N=n-sparse_limit
-        for k ∈ length(binomsum_extra)+1:N
-            push!(binomsum_extra,Values{0,Int}())
-        end
-        @inbounds isempty(binomsum_extra[N]) && (binomsum_extra[N]=binomsum_calc(n))
-        @inbounds binomsum_extra[N][i+1]
-    else
-        for k=length(binomsum_cache):n+1
-            push!(binomsum_cache,binomsum_calc(k))
-        end
-        @inbounds binomsum_cache[n+1][i+1]
-    end
-end
-@pure function binomsum_set(n::Int)::(Values{N,Int} where N)
-    if n>sparse_limit
-        N=n-sparse_limit
-        for k ∈ length(binomsum_extra)+1:N
-            push!(binomsum_extra,Values{0,Int}())
-        end
-        @inbounds isempty(binomsum_extra[N]) && (binomsum_extra[N]=binomsum_calc(n))
-        @inbounds binomsum_extra[N]
-    else
-        for k=length(binomsum_cache):n+1
-            push!(binomsum_cache,binomsum_calc(k))
-        end
-        @inbounds binomsum_cache[n+1]
-    end
-end
-
 spinsum_calc(n) = Values{n+2,Int}([0;cumsum([isodd(q) ? 0 : binomial(n,q) for q=0:n])])
-const spinsum_cache = (Values{N,Int} where N)[Values(0),Values(0,1)]
-const spinsum_extra = (Values{N,Int} where N)[]
-@pure function spinsum(n::Int, i::Int)::Int
-    if n>sparse_limit
-        N=n-sparse_limit
-        for k ∈ length(spinsum_extra)+1:N
-            push!(spinsum_extra,Values{0,Int}())
+antisum_calc(n) = Values{n+2,Int}([0;cumsum([iseven(q) ? 0 : binomial(n,q) for q=0:n])])
+for type ∈ (:binom,:spin,:anti)
+    typesum = Symbol(type,:sum)
+    typesum_set = Symbol(typesum,:_set)
+    typesum_calc = Symbol(typesum,:_calc)
+    typesum_cache = Symbol(typesum,:_cache)
+    typesum_extra = Symbol(typesum,:_extra)
+    @eval begin
+        const $typesum_cache = (Values{N,Int} where N)[Values(0),Values(0,1)]
+        const $typesum_extra = (Values{N,Int} where N)[]
+        @pure function $typesum(n::Int, i::Int)::Int
+            if n>sparse_limit
+                N=n-sparse_limit
+                for k ∈ length($typesum_extra)+1:N
+                    push!($typesum_extra,Values{0,Int}())
+                end
+                @inbounds isempty($typesum_extra[N]) && ($typesum_extra[N]=$typesum_calc(n))
+                @inbounds $typesum_extra[N][i+1]
+            else
+                for k=length($typesum_cache):n+1
+                    push!($typesum_cache,$typesum_calc(k))
+                end
+                @inbounds $typesum_cache[n+1][i+1]
+            end
         end
-        @inbounds isempty(spinsum_extra[N]) && (spinsum_extra[N]=spinsum_calc(n))
-        @inbounds spinsum_extra[N][i+1]
-    else
-        for k=length(spinsum_cache):n+1
-            push!(spinsum_cache,spinsum_calc(k))
+        @pure function $typesum_set(n::Int)::(Values{N,Int} where N)
+            if n>sparse_limit
+                N=n-sparse_limit
+                for k ∈ length($typesum_extra)+1:N
+                    push!($typesum_extra,Values{0,Int}())
+                end
+                @inbounds isempty($typesum_extra[N]) && ($typesum_extra[N]=$typesum_calc(n))
+                @inbounds $typesum_extra[N]
+            else
+                for k=length($typesum_cache):n+1
+                    push!($typesum_cache,$typesum_calc(k))
+                end
+                @inbounds $typesum_cache[n+1]
+            end
         end
-        @inbounds spinsum_cache[n+1][i+1]
-    end
-end
-@pure function spinsum_set(n::Int)::(Values{N,Int} where N)
-    if n>sparse_limit
-        N=n-sparse_limit
-        for k ∈ length(spinsum_extra)+1:N
-            push!(spinsum_extra,Values{0,Int}())
-        end
-        @inbounds isempty(spinsum_extra[N]) && (spinsum_extra[N]=spinsum_calc(n))
-        @inbounds spinsum_extra[N]
-    else
-        for k=length(spinsum_cache):n+1
-            push!(spinsum_cache,spinsum_calc(k))
-        end
-        @inbounds spinsum_cache[n+1]
     end
 end
 
@@ -173,81 +151,39 @@ end
     H = indices(UInt(d),k)
     findfirst(x->x==H,combo(k,count_ones(d)))
 end
-const bladeindex_cache = Vector{Int}[]
-const bladeindex_extra = Vector{Int}[]
-@pure function bladeindex(n::Int,s::UInt)::Int
-    if s == 0
-        1
-    elseif n>(index_limit)
-        bladeindex_calc(s,n)
-    elseif n>cache_limit
-        N = n-cache_limit
-        for k ∈ length(bladeindex_extra)+1:N
-            push!(bladeindex_extra,Int[])
+@pure basisindex_calc(d,k) = binomsum(k,count_ones(UInt(d)))+bladeindex(k,UInt(d))
+@pure spinindex_calc(d,k) = spinsum(k,count_ones(UInt(d)))+bladeindex(k,UInt(d))
+@pure antiindex_calc(d,k) = antisum(k,count_ones(UInt(d)))+bladeindex(k,UInt(d))
+for type ∈ (:blade,:basis,:spin,:anti)
+    typeindex = Symbol(type,:index)
+    typeindex_calc = Symbol(typeindex,:_calc)
+    typeindex_cache = Symbol(typeindex,:_cache)
+    typeindex_extra = Symbol(typeindex,:_extra)
+    @eval begin
+        const $typeindex_cache = Vector{Int}[]
+        const $typeindex_extra = Vector{Int}[]
+        @pure function $typeindex(n::Int,s::UInt)::Int
+            if s == 0
+                1
+            elseif n>(index_limit)
+                $typeindex_calc(s,n)
+            elseif n>cache_limit
+                N = n-cache_limit
+                for k ∈ length($typeindex_extra)+1:N
+                    push!($typeindex_extra,Int[])
+                end
+                @inbounds isempty($typeindex_extra[N]) && ($typeindex_extra[N]=-ones(Int,1<<n-1))
+                @inbounds signbit($typeindex_extra[N][s]) && ($typeindex_extra[N][s]=$typeindex_calc(s,n))
+                @inbounds $typeindex_extra[N][s]
+            else
+                j = length($typeindex_cache)+1
+                for k ∈ j:min(n,cache_limit)
+                    push!($typeindex_cache,($typeindex_calc.(1:1<<k-1,k)))
+                    GC.gc()
+                end
+                @inbounds $typeindex_cache[n][s]
+            end
         end
-        @inbounds isempty(bladeindex_extra[N]) && (bladeindex_extra[N]=-ones(Int,1<<n-1))
-        @inbounds signbit(bladeindex_extra[N][s]) && (bladeindex_extra[N][s]=bladeindex_calc(s,n))
-        @inbounds bladeindex_extra[N][s]
-    else
-        j = length(bladeindex_cache)+1
-        for k ∈ j:min(n,cache_limit)
-            push!(bladeindex_cache,(bladeindex_calc.(1:1<<k-1,k)))
-            GC.gc()
-        end
-        @inbounds bladeindex_cache[n][s]
-    end
-end
-
-@pure spinindex_calc(d,k) = spinsum(k,count_ones(d))+bladeindex(k,UInt(d))
-const spinindex_cache = Vector{Int}[]
-const spinindex_extra = Vector{Int}[]
-@pure function spinindex(n::Int,s::UInt)::Int
-    if s == 0
-        1
-    elseif n>(index_limit)
-        spinindex_calc(s,n)
-    elseif n>cache_limit
-        N = n-cache_limit
-        for k ∈ length(spinindex_extra)+1:N
-            push!(spinindex_extra,Int[])
-        end
-        @inbounds isempty(spinindex_extra[N]) && (spinindex_extra[N]=-ones(Int,1<<n-1))
-        @inbounds signbit(spinindex_extra[N][s]) && (spinindex_extra[N][s]=spinindex_calc(s,n))
-        @inbounds spinindex_extra[N][s]
-    else
-        j = length(spinindex_cache)+1
-        for k ∈ j:min(n,cache_limit)
-            push!(spinindex_cache,(spinindex_calc.(1:1<<k-1,k)))
-            GC.gc()
-        end
-        @inbounds spinindex_cache[n][s]
-    end
-end
-
-
-@inline basisindex_calc(d,k) = binomsum(k,count_ones(UInt(d)))+bladeindex(k,UInt(d))
-const basisindex_cache = Vector{Int}[]
-const basisindex_extra = Vector{Int}[]
-@pure function basisindex(n::Int,s::UInt)::Int
-    if s == 0
-        1
-    elseif n>(index_limit)
-        basisindex_calc(s,n)
-    elseif n>cache_limit
-        N = n-cache_limit
-        for k ∈ length(basisindex_extra)+1:N
-            push!(basisindex_extra,Int[])
-        end
-        @inbounds isempty(basisindex_extra[N]) && (basisindex_extra[N]=-ones(Int,1<<n-1))
-        @inbounds signbit(basisindex_extra[N][s]) && (basisindex_extra[N][s]=basisindex_calc(s,n))
-        @inbounds basisindex_extra[N][s]
-    else
-        j = length(basisindex_cache)+1
-        for k ∈ j:min(n,cache_limit)
-            push!(basisindex_cache,[basisindex_calc(d,k) for d ∈ 1:1<<k-1])
-            GC.gc()
-        end
-        @inbounds basisindex_cache[n][s]
     end
 end
 
@@ -279,6 +215,8 @@ end
 @pure indexbasis_set(N) = Values(((N≠0 && N<sparse_limit) ? @inbounds(indexbasis_cache[N]) : Vector{UInt}[indexbasis(N,g) for g ∈ 0:N])...)
 @pure indexeven(N) = vcat(indexbasis(N,0),indexeven_set(N)...)
 @pure indexeven_set(N) = Values(((N≠0 && N<sparse_limit) ? @inbounds(indexbasis_cache[N]) : Vector{UInt}[indexbasis(N,g) for g ∈ 0:2:N])...)
+@pure indexodd(N) = vcat(indexbasis(N,0),indexodd_set(N)...)
+@pure indexodd_set(N) = Values(((N≠0 && N<sparse_limit) ? @inbounds(indexbasis_cache[N]) : Vector{UInt}[indexbasis(N,g) for g ∈ 1:2:N])...)
 
 # SubManifold
 
