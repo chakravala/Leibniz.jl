@@ -4,11 +4,11 @@
 
 export basis, grade, order, options, metric, polymode, dyadmode, diffmode, diffvars
 export valuetype, value, hasinf, hasorigin, isorigin, norm, indices, tangent, isbasis, ≅
-export antigrade
+export pseudograde
 
 @pure grade(::Type{<:TensorGraded{V,G}}) where {V,G} = G-(isdyadic(V) ? 2 : 1)*diffvars(V)
-@pure antigrade(::Type{<:TensorGraded{V,G}}) where {V,G} = mdims(V)-G-(isdyadic(V) ? 2 : 1)*diffvars(V)
-@pure antigrade(V::M) where M<:Manifold = mdims(V)-rank(V)-(isdyadic(V) ? 2 : 1)*diffvars(V)
+@pure pseudograde(::Type{<:TensorGraded{V,G}}) where {V,G} = mdims(V)-G-(isdyadic(V) ? 2 : 1)*diffvars(V)
+@pure pseudograde(V::M) where M<:Manifold = mdims(V)-rank(V)-(isdyadic(V) ? 2 : 1)*diffvars(V)
 @pure grade(V::M) where M<:Manifold = rank(V)-(isdyadic(V) ? 2 : 1)*diffvars(V)
 @pure grade(m::T) where T<:Real = 0
 @pure order(m) = 0
@@ -30,7 +30,7 @@ end
 @pure ≅(a,b) = grade(a) == grade(b) && order(a) == order(b) && diffmode(a) == diffmode(b)
 
 export isdyadic, isdual, istangent
-const mixedmode = dyadmode
+const mixedmode,antigrade = dyadmode,pseudograde
 @pure isdyadic(t::Type{<:TensorAlgebra}) = dyadmode(Manifold(t))<0
 @pure isdual(t::Type{<:TensorAlgebra}) = dyadmode(Manifold(t))>0
 @pure istangent(t::Type{<:TensorAlgebra}) = diffvars(Manifold(t))≠0
@@ -159,8 +159,8 @@ const parityconj = parityreverse
 
 ## anti-reverse
 
-@pure antigrade(V::Int,B::UInt) = V-grade(V,B)
-@pure antigrade(V,B::UInt) = grade(V)-grade(V,B)
+@pure pseudograde(V::Int,B::UInt) = V-grade(V,B)
+@pure pseudograde(V,B::UInt) = grade(V)-grade(V,B)
 
 # comparison (special case for scalars)
 
