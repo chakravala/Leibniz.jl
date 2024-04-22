@@ -166,7 +166,9 @@ end
 showparens(T) = !|(broadcast(<:,T,parnot)...) && |(broadcast(<:,T,parval)...)
 
 function showstar(io::IO,v)
-    if !(isa(v,Integer) && !isa(v,Bool) || isa(v,AbstractFloat) && isfinite(v))
+    if isa(v,TensorAlgebra)
+        print(io,"⊗")
+    elseif !(isa(v,Integer) && !isa(v,Bool) || isa(v,AbstractFloat) && isfinite(v))
         print(io, "*")
     end
 end
