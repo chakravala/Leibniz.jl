@@ -12,7 +12,7 @@
 #   https://github.com/chakravala
 #   https://crucialflow.com
 
-import AbstractTensors: conj, inv, PROD, SUM, -, /
+import AbstractTensors: gdims, conj, inv, PROD, SUM, -, /
 import AbstractTensors: sqrt, abs, exp, expm1, log, log1p, sin, cos, sinh, cosh, ^
 
 Bits,bits = UInt,UInt
@@ -26,14 +26,14 @@ AbstractTensors.:-(x::Values) = Base.:-(x)
 AbstractTensors.:-(x::Values{N,Any} where N) = broadcast(-,x)
 @inline AbstractTensors.norm(z::Values{N,Any} where N) = sqrt(SUM(z.^2...))
 
-@pure binomial(N,G) = Base.binomial(N,G)
-@pure binomial_set(N) = Values(Int[binomial(N,g) for g ∈ 0:N]...)
-@pure binomial_even(N) = Values(Int[binomial(N,g) for g ∈ 0:2:N]...)
+const binomial = gdims
+@pure binomial_set(N) = Values(Int[gdims(N,g) for g ∈ 0:N]...)
+@pure binomial_even(N) = Values(Int[gdims(N,g) for g ∈ 0:2:N]...)
 @pure intlog(M::Integer) = Int(log2(M))
 @pure promote_type(t...) = Base.promote_type(t...)
-@pure mvec(N,G,t) = Variables{binomial(N,G),t}
+@pure mvec(N,G,t) = Variables{gdims(N,G),t}
 @pure mvec(N,t) = Variables{1<<N,t}
-@pure svec(N,G,t) = FixedVector{binomial(N,G),t}
+@pure svec(N,G,t) = FixedVector{gdims(N,G),t}
 @pure svec(N,t) = FixedVector{1<<N,t}
 @pure mvecs(N,t) = Variables{1<<(N-1),t}
 @pure svecs(N,t) = FixedVector{1<<(N-1),t}
@@ -51,8 +51,8 @@ function insert_expr(e,vec=:mvec,T=:(valuetype(a)),S=:(valuetype(b)),L=:(1<<N);m
     assign_expr!(e,x,:r,:(binomsum(N,G)))
     assign_expr!(e,x,:rr,:(spinsum(N,G)))
     assign_expr!(e,x,:rrr,:(antisum(N,G)))
-    assign_expr!(e,x,:bng,:(binomial(N,G)))
-    assign_expr!(e,x,:bnl,:(binomial(N,L)))
+    assign_expr!(e,x,:bng,:(gdims(N,G)))
+    assign_expr!(e,x,:bnl,:(gdims(N,L)))
     assign_expr!(e,x,:ib,:(indexbasis(N,G)))
     assign_expr!(e,x,:rs,:(spinsum_set(N)))
     assign_expr!(e,x,:ps,:(antisum_set(N)))
@@ -102,9 +102,9 @@ function combo(n::Int,g::Int)::Vector{Vector{Int}}
     end
 end
 
-binomsum_calc(n) = Values{n+2,Int}([0;cumsum([binomial(n,q) for q=0:n])])
-spinsum_calc(n) = Values{n+2,Int}([0;cumsum([isodd(q) ? 0 : binomial(n,q) for q=0:n])])
-antisum_calc(n) = Values{n+2,Int}([0;cumsum([iseven(q) ? 0 : binomial(n,q) for q=0:n])])
+binomsum_calc(n) = Values{n+2,Int}([0;cumsum([gdims(n,q) for q=0:n])])
+spinsum_calc(n) = Values{n+2,Int}([0;cumsum([isodd(q) ? 0 : gdims(n,q) for q=0:n])])
+antisum_calc(n) = Values{n+2,Int}([0;cumsum([iseven(q) ? 0 : gdims(n,q) for q=0:n])])
 for type ∈ (:binom,:spin,:anti)
     typesum = Symbol(type,:sum)
     typesum_set = Symbol(typesum,:_set)

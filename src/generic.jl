@@ -173,23 +173,23 @@ Base.:<=(x,y::T) where T<:TensorTerm{V,0} where V = isless(x,y) | (x == y)
 
 # operations
 
-export ⊕, χ, gdims
+export ⊕, χ, count_gdims
 
 """
     χ(::TensorAlgebra)
 
 Compute the Euler characteristic χ = ∑ₚ(-1)ᵖbₚ.
 """
-χ(t::T) where T<:TensorAlgebra = (B=gdims(t);sum([B[t]*(-1)^t for t ∈ 1:length(B)]))
+χ(t::T) where T<:TensorAlgebra = (B=count_gdims(t);sum([B[t]*(-1)^t for t ∈ 1:length(B)]))
 χ(t::T) where T<:TensorTerm = χ(Manifold(t),UInt(basis(t)),t)
 @inline χ(V,b::UInt,t) = iszero(t) ? 0 : isodd(count_ones(symmetricmask(V,b,b)[1])) ? 1 : -1
 
-function gdims(t::T) where T<:TensorTerm
+function count_gdims(t::T) where T<:TensorTerm
     B,N = UInt(basis(t)),mdims(t)
     g = count_ones(symmetricmask(Manifold(t),B,B)[1])
     Variables{N+1,Int}([g==G ? abs(χ(t)) : 0 for G ∈ 0:N])
 end
-function gdims(t::T) where T<:TensorGraded{V,G} where {V,G}
+function count_gdims(t::T) where T<:TensorGraded{V,G} where {V,G}
     N = mdims(V)
     out = zeros(Variables{N+1,Int})
     ib = indexbasis(N,G)
