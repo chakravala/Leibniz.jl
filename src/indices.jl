@@ -52,7 +52,13 @@ const PRE = ("X","x","Y","y")
 const vsn = (:V,:VV,:W)
 const VSN = (:Χ,:ΧΧ,:Υ) # \Chi,\Upsilon
 
-# converts indices into BitArray of length N
+# index utilities
+
+"""
+    indexbits(N,indices) -> BitVector
+
+Converts a list of `indices` into a `BitVector` of length `N`, used to create an array where only the specified `indices` are set to `true`.
+"""
 @inline function indexbits(N::I,indices::T) where {I<:Integer,T<:SVTI}
     out = falses(N)
     for k ∈ indices
@@ -61,37 +67,48 @@ const VSN = (:Χ,:ΧΧ,:Υ) # \Chi,\Upsilon
     return out
 end
 
-# index sets
-index_limit = 20
-const digits_fast_cache = Vector{Values}[]
-const digits_fast_extra = Dict{UInt,Values}[]
-@pure digits_fast_calc(b,N) = Values{N+1,Int}(digits(b,base=2,pad=N+1))
-@pure function digits_fast(b,N)
+const index_limit = 20
+const digitsfast_cache = Vector{Values}[]
+const digitsfast_extra = Dict{UInt,Values}[]
+@pure digitsfast_calc(b,N) = Values{N+1,Int}(digits(b,base=2,pad=N+1))
+
+"""
+    digitsfast(b,N::Int) -> Values{N+1,Int}
+
+Calculates the digits of a binary number `b` up to length `N`.
+"""
+@pure function digitsfast(b,N::Int)
     if N>index_limit
         n = N-index_limit
-        for k ∈ length(digits_fast_extra)+1:n
-            push!(digits_fast_extra,Dict{UInt,Values{k+1,Int}}())
+        for k ∈ length(digitsfast_extra)+1:n
+            push!(digitsfast_extra,Dict{UInt,Values{k+1,Int}}())
         end
-        !haskey(digits_fast_extra[n],b) && push!(digits_fast_extra[n],b=>digits_fast_calc(b,N))
-        @inbounds digits_fast_extra[n][b]
+        !haskey(digitsfast_extra[n],b) && push!(digitsfast_extra[n],b=>digitsfast_calc(b,N))
+        @inbounds digitsfast_extra[n][b]
     elseif N==0
         Values{1,Int}(0)
     else
-        for k ∈ length(digits_fast_cache)+1:min(N,index_limit)
-            push!(digits_fast_cache,[digits_fast_calc(d,k) for d ∈ 0:1<<(k+1)-1])
+        for k ∈ length(digitsfast_cache)+1:min(N,index_limit)
+            push!(digitsfast_cache,[digitsfast_calc(d,k) for d ∈ 0:1<<(k+1)-1])
             GC.gc()
         end
-        @inbounds digits_fast_cache[N][b+1]
+        @inbounds digitsfast_cache[N][b+1]
     end
 end
+const digits_fast = digitsfast
 
-const indices_cache = Dict{UInt,Vector{Int}}()
+"""
+    indices(b::UInt) -> Vector
+    indices(b::UInt,N::UInt) -> Vector
+
+Computes the indices at which a binary number `b` has bits equal to 1. The `N` argument (optional) specifies the length of the binary representation.
+"""
 indices(b::UInt) = findall(digits(b,base=2).==1)
+const indices_cache = Dict{UInt,Vector{Int}}()
 function indices_calc(b::UInt,N::Int)
-    d = digits_fast(b,N)
-    l = length(d)
+    d = digitsfast(b,N)
     a = Int[]
-    for i ∈ 1:l
+    for i ∈ 1:N+1
         d[i] == 1 && push!(a,i)
     end
     return a
@@ -118,10 +135,12 @@ shift_indices(V::Int,b::UInt) = indices(b,V)
 shift_indices!(s::Int,set::Vector{Int}) = set
 
 # printing of indices
+
 @inline function printindex(i,l::Bool=false,e::String=pre[1],pre=pre)
     t = i>36; j = t ? i-26 : i
     (l&&(0<j≤10)) ? j : ((e∉pre[[1,3]])⊻t ? sups[j] : subs[j])
- end
+end
+
 @inline printindices(io::IO,b::UInt,l::Bool=false,e::String=pre[1],pre::NTuple{4,String}=pre) = printindices(io,indices(b),l,e,pre)
 @inline printindices(io::IO,b::VTI,l::Bool=false,e::String=pre[1],pre::NTuple{4,String}=pre) = print(io,e,[printindex(i,l,e,pre) for i ∈ b]...)
 @inline printindices(io::IO,a::VTI,b::VTI,l::Bool=false,e::String=pre[1],f::String=pre[2]) = printindices(io,a,b,Int[],Int[],l,e,f)

@@ -12,23 +12,54 @@
 #   https://github.com/chakravala
 #   https://crucialflow.com
 
-import AbstractTensors: gdims, conj, inv, PROD, SUM, -, /
+import AbstractTensors: gdims, conj, inv, PROD, SUM, -, /, countvalues, evenvalues, evens
 import AbstractTensors: sqrt, abs, exp, expm1, log, log1p, sin, cos, sinh, cosh, ^
 
-Bits,bits = UInt,UInt
+const Bits,bits = UInt,UInt
 
 const VTI = Union{Vector{Int},Tuple,NTuple}
 const SVTI = Union{Vector{Int},Tuple,NTuple,Values}
 
-bit2int(b::BitArray{1}) = isempty(b) ? UInt(0) : parse(UInt,join(reverse([t ? '1' : '0' for t ∈ b])),base=2)
+"""
+    bit2int(b::BitVector) -> UInt
+
+Takes a BitVector and converts it to a corresponding unsigned integer representation.
+"""
+function bit2int(b::BitVector)
+    isempty(b) ? UInt(0) : parse(UInt,join(reverse([t ? '1' : '0' for t ∈ b])),base=2)
+end
 
 AbstractTensors.:-(x::Values) = Base.:-(x)
 AbstractTensors.:-(x::Values{N,Any} where N) = broadcast(-,x)
 @inline AbstractTensors.norm(z::Values{N,Any} where N) = sqrt(SUM(z.^2...))
 
-const binomial = gdims
-@pure binomial_set(N) = Values(Int[gdims(N,g) for g ∈ 0:N]...)
-@pure binomial_even(N) = Values(Int[gdims(N,g) for g ∈ 0:2:N]...)
+"""
+    gdimsall(N) -> Values{N+1,Int}
+
+Returns `Values{N+1,Int}` representing binomial coefficients from `0` to `N`.
+"""
+@pure gdimsall(N) = gdims.(N,countvalues(0,N))
+const binomial,binomial_set = gdims,gdimsall
+
+"""
+    gdimseven(N) -> Values
+
+Returns `Values` representing binomial coefficients for even values from `0` to `N`.
+"""
+@pure gdimseven(N) = gdims.(N,evenvalues(0,N))
+
+"""
+    gdimsodd(N) -> Values
+
+Returns `Values` representing binomial coefficients for odd values from `1` to `N`.
+"""
+@pure gdimsodd(N) = gdims.(N,evenvalues(1,N))
+
+"""
+    intlog(M::Integer) -> Int
+
+This function computes the integer 2-logarithm of an integer.
+"""
 @pure intlog(M::Integer) = Int(log2(M))
 @pure promote_type(t...) = Base.promote_type(t...)
 @pure mvec(N,G,t) = Variables{gdims(N,G),t}
@@ -68,7 +99,8 @@ end
 
 ## cache
 
-export binomsum, spinsum, antisum, lowerbits, expandbits
+export gdimsall, gdimseven, gdimsodd, lowerbits, expandbits
+export binomsum, binomcumsum, spinsum, spincumsum, antisum, anticumsum
 export bladeindex, spinindex, antiindex, basisindex, indexbasis, indexeven, indexodd
 
 const algebra_limit = 8
@@ -102,12 +134,12 @@ function combo(n::Int,g::Int)::Vector{Vector{Int}}
     end
 end
 
-binomsum_calc(n) = Values{n+2,Int}([0;cumsum([gdims(n,q) for q=0:n])])
-spinsum_calc(n) = Values{n+2,Int}([0;cumsum([isodd(q) ? 0 : gdims(n,q) for q=0:n])])
-antisum_calc(n) = Values{n+2,Int}([0;cumsum([iseven(q) ? 0 : gdims(n,q) for q=0:n])])
+binomsum_calc(n) = Values{n+2,Int}(0,cumsum(Values([gdims(n,q) for q=countvalues(0,n)]))...)
+spinsum_calc(n) = Values{n+2,Int}(0,cumsum(Values([isodd(q) ? 0 : gdims(n,q) for q=countvalues(0,n)]))...)
+antisum_calc(n) = Values{n+2,Int}(0,cumsum(Values([iseven(q) ? 0 : gdims(n,q) for q=countvalues(0,n)]))...)
 for type ∈ (:binom,:spin,:anti)
     typesum = Symbol(type,:sum)
-    typesum_set = Symbol(typesum,:_set)
+    typecumsum = Symbol(type,:cumsum)
     typesum_calc = Symbol(typesum,:_calc)
     typesum_cache = Symbol(typesum,:_cache)
     typesum_extra = Symbol(typesum,:_extra)
@@ -129,7 +161,7 @@ for type ∈ (:binom,:spin,:anti)
                 @inbounds $typesum_cache[n+1][i+1]
             end
         end
-        @pure function $typesum_set(n::Int)::(Values{N,Int} where N)
+        @pure function $typecumsum(n::Int)::(Values{N,Int} where N)
             if n>sparse_limit
                 N=n-sparse_limit
                 for k ∈ length($typesum_extra)+1:N
@@ -146,6 +178,7 @@ for type ∈ (:binom,:spin,:anti)
         end
     end
 end
+const binomsum_set,spinsum_set,antisum_set = binomcumsum,spincumsum,anticumsum
 
 @pure function bladeindex_calc(d,k)
     H = indices(UInt(d),k)
