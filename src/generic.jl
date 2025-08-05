@@ -48,7 +48,7 @@ const mixedmode,antigrade = dyadmode,pseudograde
 for T ∈ (:T,:(Type{T}))
     @eval @pure isbasis(::$T) where T<:TensorAlgebra = false
 end
-@pure UInt(m::T) where T<:TensorTerm = UInt(basis(m))
+@pure Base.UInt(m::T) where T<:TensorTerm = UInt(basis(m))
 
 @pure hasconformal(V) = hasinf(V) && hasorigin(V)
 @pure hasinf(::Int) = false
@@ -65,16 +65,6 @@ end
 
 @pure hasinf2(V,A::UInt,B::UInt) = hasconformal(V) && isodd(A) && isodd(B)
 @pure hasorigin2(V,A::UInt,B::UInt) = hasconformal(V) && hasorigin(V,A) && hasorigin(V,B)
-
-@pure function hasorigininf(V,A::UInt,B::UInt)
-    hasconformal(V) && hasorigin(V,A) && isodd(B) && !hasorigin(V,B) && !isodd(A)
-end
-@pure function hasinforigin(V,A::UInt,B::UInt)
-    hasconformal(V) && isodd(A) && hasorigin(V,B) && !isodd(B) && !hasorigin(V,A)
-end
-
-@pure hasinf2origin(V,A::UInt,B::UInt) = hasinf2(V,A,B) && hasorigin(V,A,B)
-@pure hasorigin2inf(V,A::UInt,B::UInt) = hasorigin2(V,A,B) && hasinf(V,A,B)
 
 @pure diffmask(::Int) = zero(UInt)
 @pure function diffmask(V::M) where M<:Manifold
@@ -257,25 +247,25 @@ export complementleft, complementright, ⋆, complementlefthodge, complementrigh
 @doc """
     complementrighthodge(ω::TensorAlgebra)
 
-Grassmann-Poincare-Hodge complement: ⋆ω = ω∗I
+Grassmann-Hodge right complement: ⋆ω = ω∗I
 """ complementrighthodge
 
 @doc """
     complementlefthodge(ω::TensorAlgebra)
 
-Grassmann-Poincare left complement: ⋆'ω = I∗'ω
+Grassmann-Hodge left complement: ⋆'ω = I∗'ω
 """ complementlefthodge
 
 @doc """
     complementright(::TensorAlgebra)
 
-Non-metric variant of Grassmann-Poincare-Hodge complement.
+Euclidean metric variant of Grassmann right complement.
 """ complementright
 
 @doc """
     complementleft(::TensorAlgebra)
 
-Non-metric variant Grassmann-Poincare left complement.
+Euclidean metric variant Grassmann left complement.
 """ complementleft
 
 # QR compatibility

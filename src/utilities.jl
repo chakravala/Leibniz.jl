@@ -15,8 +15,6 @@
 import AbstractTensors: gdims, conj, inv, PROD, SUM, -, /, countvalues, evenvalues, evens
 import AbstractTensors: sqrt, abs, exp, expm1, log, log1p, sin, cos, sinh, cosh, ^
 
-const Bits,bits = UInt,UInt
-
 const VTI = Union{Vector{Int},Tuple,NTuple}
 const SVTI = Union{Vector{Int},Tuple,NTuple,Values}
 
@@ -85,10 +83,10 @@ function insert_expr(e,vec=:mvec,T=:(valuetype(a)),S=:(valuetype(b)),L=:(1<<N);m
     assign_expr!(e,x,:bng,:(gdims(N,G)))
     assign_expr!(e,x,:bnl,:(gdims(N,L)))
     assign_expr!(e,x,:ib,:(indexbasis(N,G)))
-    assign_expr!(e,x,:rs,:(spinsum_set(N)))
-    assign_expr!(e,x,:ps,:(antisum_set(N)))
-    assign_expr!(e,x,:bs,:(binomsum_set(N)))
-    assign_expr!(e,x,:bn,:(binomial_set(N)))
+    assign_expr!(e,x,:rs,:(spincumsum(N)))
+    assign_expr!(e,x,:ps,:(anticumsum(N)))
+    assign_expr!(e,x,:bs,:(binomcumsum(N)))
+    assign_expr!(e,x,:bn,:(gdimsall(N)))
     assign_expr!(e,x,:df,:(dualform(V)))
     assign_expr!(e,x,:di,:(dualindex(V)))
     assign_expr!(e,x,:D,:(diffvars(V)))
