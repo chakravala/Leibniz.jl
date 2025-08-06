@@ -62,11 +62,25 @@ end=#
 parval = (Expr,Complex,Rational,TensorAlgebra)
 parnot = (TensorTerm,)
 
+check_parval(x) = false
+check_parnot(x) = false
+for Field ∈ parval
+    @eval check_parval(::Type{<:$Field}) = true
+end
+for Field ∈ parnot
+    @eval check_parnot(::Type{<:$Field}) = true
+end
+
 # number fields
 
 const Fields = (Real,Complex)
 const Field = Fields[1]
 const ExprField = Union{Expr,Symbol}
+
+check_field(x) = false
+for Field ∈ Fields
+    @eval check_field(::Type{<:$Field}) = true
+end
 
 extend_field(Field=Field) = (global parval = (parval...,Field))
 extend_parnot(Field) = (global parnot = (parnot...,Field))

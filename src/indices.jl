@@ -182,7 +182,7 @@ end
 
 @inline printlabel(V::T,e::UInt,label::Bool,vec,cov,duo,dif) where T<:Manifold = printlabel(IOBuffer(),V,e,label,vec,cov,duo,dif) |> take! |> String
 
-showparens(T) = !|(broadcast(<:,T,parnot)...) && |(broadcast(<:,T,parval)...)
+showparens(T) = !check_parnot(T) && check_parval(T)
 
 function showstar(io::IO,v)
     if isa(v,TensorAlgebra)
