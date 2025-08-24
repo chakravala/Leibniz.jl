@@ -66,17 +66,6 @@ end
 @pure hasinf2(V,A::UInt,B::UInt) = hasconformal(V) && isodd(A) && isodd(B)
 @pure hasorigin2(V,A::UInt,B::UInt) = hasconformal(V) && hasorigin(V,A) && hasorigin(V,B)
 
-@pure function hasorigininf(V,A::UInt,B::UInt)
-    hasconformal(V) && hasorigin(V,A) && isodd(B) && !hasorigin(V,B) && !isodd(A)
-end
-
-@pure function hasinforigin(V,A::UInt,B::UInt)
-    hasconformal(V) && isodd(A) && hasorigin(V,B) && !isodd(B) && !hasorigin(V,A)
-end
-
-@pure hasinf2origin(V,A::UInt,B::UInt) = hasinf2(V,A,B) && hasorigin(V,A,B)
-@pure hasorigin2inf(V,A::UInt,B::UInt) = hasorigin2(V,A,B) && hasinf(V,A,B)
-
 @pure diffmask(::Int) = zero(UInt)
 @pure function diffmask(V::M) where M<:Manifold
     d = diffvars(V)

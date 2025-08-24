@@ -20,7 +20,8 @@ module Leibniz
 #             \/          \/      \/           \/
 
 using LinearAlgebra, AbstractTensors
-export Manifold, Differential, Derivation, d, ∂, ∇, Δ
+export Manifold, Differential, Derivation, d, ∂, δ, ∇, Δ
+export differential, codifferential, boundary, nabla
 import Base: getindex, convert, @pure, +, *, ∪, ∩, ⊆, ⊇, ==, show, zero
 import LinearAlgebra: det, rank
 
@@ -151,10 +152,12 @@ for op ∈ (:(Base.:+),:(Base.:-),:(Base.:*),:(Base.:/),:(Base.:\),:∧,:∨,:do
 end
 
 const ∇ = Derivation(LinearAlgebra.I)
-const Δ = ∇^2
+const Δ,nabla = ∇^2,∇
 
-function d end
-function ∂ end
+function differential end
+function codifferential end
+function boundary end
+const d,δ,∂ = differential,codifferential,boundary
 
 include("generic.jl")
 include("indices.jl")
