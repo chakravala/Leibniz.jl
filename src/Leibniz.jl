@@ -21,7 +21,7 @@ module Leibniz
 
 using LinearAlgebra, AbstractTensors
 export Manifold, Differential, Derivation, d, ∂, δ, ∇, Δ
-export differential, codifferential, boundary, nabla
+export differential, codifferential, boundary, nabla, laplacian
 import Base: getindex, convert, @pure, +, *, ∪, ∩, ⊆, ⊇, ==, show, zero
 import LinearAlgebra: det, rank
 
@@ -113,8 +113,8 @@ end
 Derivation{T}(v::UniformScaling{T}) where T = Derivation{T,1}(v)
 Derivation(v::UniformScaling{T}) where T = Derivation{T}(v)
 
-show(io::IO,v::Derivation{Bool,O}) where O = print(io,(v.v.λ ? "" : "-"),"∂ₖ",O==1 ? "" : AbstractTensors.sups[O],"v",isodd(O) ? "ₖ" : "")
-show(io::IO,v::Derivation{T,O}) where {T,O} = print(io,v.v.λ,"∂ₖ",O==1 ? "" : AbstractTensors.sups[O],"v",isodd(O) ? "ₖ" : "")
+show(io::IO,v::Derivation{Bool,O}) where O = print(io,(v.v.λ ? "" : "-"),"∂ₖ",O==1 ? "" : sups[O],"v",isodd(O) ? "ₖ" : "")
+show(io::IO,v::Derivation{T,O}) where {T,O} = print(io,v.v.λ,"∂ₖ",O==1 ? "" : sups[O],"v",isodd(O) ? "ₖ" : "")
 
 Base.:-(v::Derivation{Bool,O}) where O = Derivation{Bool,O}(UniformScaling{Bool}(!v.v.λ))
 Base.:-(v::Derivation{T,O}) where {T,O} = Derivation{T,O}(UniformScaling{T}(-v.v.λ))
@@ -152,12 +152,25 @@ for op ∈ (:(Base.:+),:(Base.:-),:(Base.:*),:(Base.:/),:(Base.:\),:∧,:∨,:do
 end
 
 const ∇ = Derivation(LinearAlgebra.I)
-const Δ,nabla = ∇^2,∇
+const Δ = ∇^2
+const nabla,laplacian = ∇,Δ
 
 function differential end
 function codifferential end
 function boundary end
 const d,δ,∂ = differential,codifferential,boundary
+
+@doc """
+    ∇ = ∂ₖvₖ # nabla
+
+Abstract `nabla` first-order `Derivation{Bool,1}` operator dispatch.
+""" ∇, nabla
+
+@doc """
+    Δ = ∇^2 = ∂ₖ²v # laplacian
+
+Abstract `laplacian` second-order `Derivation{Bool,2}` Laplace operator dispatch.
+""" Δ, laplacian
 
 include("generic.jl")
 include("indices.jl")
