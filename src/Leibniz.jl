@@ -20,7 +20,7 @@ module Leibniz
 #             \/          \/      \/           \/
 
 using LinearAlgebra, AbstractTensors
-export Manifold, Differential, Derivation, d, ∂, δ, ∇, Δ
+export Manifold, Differential, Derivation, Nabla, Laplacian, d, ∂, δ, ∇, Δ
 export differential, codifferential, boundary, nabla, laplacian
 import Base: getindex, convert, @pure, +, *, ∪, ∩, ⊆, ⊇, ==, show, zero
 import LinearAlgebra: det, rank
@@ -159,18 +159,20 @@ function differential end
 function codifferential end
 function boundary end
 const d,δ,∂ = differential,codifferential,boundary
+const Nabla = Derivation{Bool,1}
+const Laplacian = Derivation{Bool,2}
 
 @doc """
-    ∇ = ∂ₖvₖ # nabla
+    ∇ = ∂ₖvₖ # nabla::Nabla
 
-Abstract `nabla` first-order `Derivation{Bool,1}` operator dispatch.
-""" ∇, nabla
+Abstract `nabla` as first-order `Derivation{Bool,1}` is `Nabla` operator dispatch.
+""" ∇, Nabla, nabla
 
 @doc """
-    Δ = ∇^2 = ∂ₖ²v # laplacian
+    Δ = ∇^2 = ∂ₖ²v # laplacian::Laplacian
 
-Abstract `laplacian` second-order `Derivation{Bool,2}` Laplace operator dispatch.
-""" Δ, laplacian
+Abstract `laplacian` as second-order `Derivation{Bool,2}` is `Laplacian` operator dispatch.
+""" Δ, Laplacian, laplacian
 
 include("generic.jl")
 include("indices.jl")
