@@ -28,7 +28,7 @@ import LinearAlgebra: det, rank
 ## Manifold{N}
 
 import AbstractTensors: TensorAlgebra, Manifold, TensorGraded, TensorTerm
-import AbstractTensors: scalar, isscalar, involute, equal, complement
+import AbstractTensors: scalar, isscalar, involute, equal, complement, pseudoscalar
 import AbstractTensors: vector, isvector, bivector, isbivector, volume, isvolume, ⋆, mdims
 import AbstractTensors: value, valuetype, interop, interform, even, odd, isnull, norm
 import AbstractTensors: TupleVector, Values, Variables, FixedVector
